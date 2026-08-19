@@ -618,7 +618,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       cardEl.innerHTML = `
         <div class="card-item-preview">
-          <img src="" alt="${title}" id="catalog_preview_${id}">
+          <img src="" alt="${title}" id="catalog_preview_${id}" loading="lazy" decoding="async">
         </div>
         <div class="card-item-body">
           <h3 class="card-item-title">${escapeHtml(title)}</h3>
