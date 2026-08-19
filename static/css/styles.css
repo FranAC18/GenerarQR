@@ -677,43 +677,6 @@ input:checked + .slider:before {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* Gallery of logos */
-.logos-grid {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.quick-logo-pill {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.35rem 0.65rem;
-  background: var(--bg-input);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.quick-logo-pill:hover, .quick-logo-pill.active {
-  border-color: var(--accent-primary);
-  color: var(--text-primary);
-  background: rgba(99, 102, 241, 0.1);
-}
-
-.quick-logo-pill img {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-  background: #fff;
-  border-radius: 4px;
-}
-
 /* Colors Row & Pickers */
 .colors-row {
   display: grid;

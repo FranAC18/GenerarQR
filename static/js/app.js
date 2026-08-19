@@ -367,13 +367,15 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.logoDropZone.addEventListener('drop', (e) => {
       const files = e.dataTransfer.files;
       if (files.length > 0) {
-        uploadLogoFile(files[0]);
+        handleLogoFileSelect(files[0]);
       }
     });
 
     dom.removeLogoBtn.addEventListener('click', () => {
+      state.pendingLogoFile = null;
       state.logoPath = null;
       updateLogoUI(null);
+      markAsUnsaved();
       triggerLivePreview();
       showToast('Logotipo removido del QR', 'info');
     });
@@ -486,38 +488,30 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // GESTIÓN Y SUBIDA DE LOGOS
+  // GESTIÓN DE LOGOTIPOS (PREVIEW LOCAL + SUBIDA AL GUARDAR)
   // ==========================================
   function handleLogoFileSelect(e) {
-    const file = e.target.files[0];
-    if (file) uploadLogoFile(file);
-  }
+    const file = e.target.files ? e.target.files[0] : e;
+    if (!file) return;
 
-  async function uploadLogoFile(file) {
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      showToast('Subiendo logotipo...', 'info');
-      const res = await fetch('/api/upload-logo', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.detail || 'Error al subir el logo');
-      }
-
-      const data = await res.json();
-      state.logoPath = data.logo_path;
-      updateLogoUI(data.logo_path, data.storage, data.url);
-      triggerLivePreview();
-      loadAvailableLogos();
-      showToast(`¡Logo subido con éxito (${data.storage})!`, 'success');
-    } catch (err) {
-      showToast(err.message, 'error');
+    if (!file.type.startsWith('image/')) {
+      showToast('Por favor selecciona una imagen válida (PNG, JPG, SVG, WebP).', 'error');
+      return;
     }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target.result;
+      state.pendingLogoFile = file;
+      state.logoPath = dataUrl;
+      state.logoFileName = file.name;
+
+      updateLogoUI(dataUrl, 'Pendiente de guardar', dataUrl, file.name);
+      markAsUnsaved();
+      triggerLivePreview();
+      showToast(`Logo '${file.name}' listo para la vista previa`, 'info');
+    };
+    reader.readAsDataURL(file);
   }
 
   function resolveLogoPreviewUrl(logoPath) {
@@ -536,16 +530,16 @@ document.addEventListener('DOMContentLoaded', () => {
       ? cleanPath
       : `img/${cleanPath}`;
 
-    // Avoid keeping a stale broken image in the browser cache after an upload.
     return `/${assetPath}?v=${encodeURIComponent(assetPath)}-${Date.now()}`;
   }
 
-  function updateLogoUI(logoPath, storage = null, previewUrl = null) {
+  function updateLogoUI(logoPath, storage = null, previewUrl = null, customName = null) {
     if (logoPath) {
       dom.logoPreviewBar.style.display = 'flex';
       const rawPath = String(logoPath);
       const isRemote = /^(https?:|data:|blob:|\/\/)/i.test(rawPath);
-      const fileNameOnly = rawPath.split(/[?#]/, 1)[0].split('/').pop();
+      const isDataUri = rawPath.startsWith('data:');
+      const fileNameOnly = customName || (isDataUri ? (state.logoFileName || 'logo_personalizado.png') : rawPath.split(/[?#]/, 1)[0].split('/').pop());
       const imageSource = previewUrl || rawPath;
       const imageUrl = /^(https?:|data:|blob:|\/\/)/i.test(imageSource)
         ? imageSource
@@ -567,7 +561,7 @@ document.addEventListener('DOMContentLoaded', () => {
       dom.logoThumbImg.src = imageUrl;
 
       dom.logoNameLabel.textContent = fileNameOnly;
-      dom.logoStorageSource.textContent = isRemote ? 'Supabase Storage' : 'Almacenamiento Local';
+      dom.logoStorageSource.textContent = storage || (isRemote ? 'Supabase Storage' : 'Almacenamiento Local');
       dom.logoStatusBadge.textContent = 'Logo Activo';
       dom.logoStatusBadge.style.display = 'inline-block';
     } else {
@@ -575,38 +569,6 @@ document.addEventListener('DOMContentLoaded', () => {
       dom.logoStatusBadge.style.display = 'none';
       dom.logoThumbImg.removeAttribute('src');
       dom.logoThumbImg.closest('.logo-thumb-wrapper')?.classList.remove('is-broken');
-    }
-  }
-
-  async function loadAvailableLogos() {
-    try {
-      const res = await fetch('/api/logos');
-      const data = await res.json();
-      state.availableLogos = data.logos || [];
-
-      dom.availableLogosGrid.innerHTML = '';
-      state.availableLogos.forEach(logo => {
-        const pill = document.createElement('button');
-        pill.type = 'button';
-        const isCurrent = state.logoPath === logo.path || state.logoPath === logo.url;
-        pill.className = `quick-logo-pill ${isCurrent ? 'active' : ''}`;
-        const imgUrl = logo.url.startsWith('/') || logo.url.startsWith('http') ? logo.url : `/${logo.url}`;
-        pill.innerHTML = `
-          <img src="${imgUrl}" alt="${logo.filename}" onerror="this.style.display='none'">
-          <span>${logo.filename}</span>
-        `;
-        pill.addEventListener('click', () => {
-          state.logoPath = logo.path;
-          updateLogoUI(logo.path, logo.storage);
-          triggerLivePreview();
-          document.querySelectorAll('.quick-logo-pill').forEach(p => p.classList.remove('active'));
-          pill.classList.add('active');
-          showToast(`Logo seleccionado: ${logo.filename}`, 'info');
-        });
-        dom.availableLogosGrid.appendChild(pill);
-      });
-    } catch (err) {
-      console.warn('Error cargando logos guardados:', err);
     }
   }
 
@@ -871,20 +833,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const payload = buildPayload('png');
     const targetUrl = payload.data || dom.previewTargetUrl.textContent;
     if (!targetUrl || targetUrl.includes('https://...')) {
-      showToast('Ingresa una dirección URL o contenido para guardar la tarjeta.', 'error');
-      dom.urlInput.focus();
-      return;
-    }
+      showToast('Ingresa una dirección URL o contenido     try {
+      showToast('Guardando tarjeta...', 'info');
 
-    try {
-      showToast('Guardando tarjeta en la base de datos...', 'info');
+      // Subir logotipo a almacenamiento ÚNICAMENTE ahora si hay un archivo nuevo cargado
+      let targetLogoPath = state.logoPath || '';
+      if (state.pendingLogoFile) {
+        try {
+          const formData = new FormData();
+          formData.append('file', state.pendingLogoFile);
+          const uploadRes = await fetch('/api/upload-logo', {
+            method: 'POST',
+            body: formData
+          });
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            targetLogoPath = uploadData.logo_path;
+            state.logoPath = targetLogoPath;
+            state.pendingLogoFile = null;
+            updateLogoUI(targetLogoPath, uploadData.storage, uploadData.url);
+          }
+        } catch (uploadErr) {
+          console.warn('Advertencia al subir logo:', uploadErr);
+        }
+      }
+
       const res = await fetch('/api/tarjetas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: cardId,
           url: targetUrl,
-          logo: state.logoPath || '',
+          logo: targetLogoPath,
           title: dom.cardTitleInput.value.trim() || cardId,
           fill_color: state.fillColor,
           back_color: state.backColor,
@@ -944,13 +924,14 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.textInput.value = '';
     state.cardId = '';
     state.cardTitle = '';
+    state.pendingLogoFile = null;
     state.logoPath = 'img/kobaia.png';
     updateLogoUI('img/kobaia.png');
     
     // Ocultar panel de descarga al crear nueva tarjeta hasta que se guarde
     dom.downloadOptionsPanel?.classList.remove('active');
     dom.saveToCatalogBtn?.classList.remove('saved');
-    if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = '💾 Guardar y Generar Código QR';
+    if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = 'Guardar y Generar Código QR';
 
     triggerLivePreview();
   }
