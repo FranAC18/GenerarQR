@@ -1,5 +1,12 @@
 {
   "tarjetas": {
-    "pagina": "https://example.com"
+    "macrojaguar": {
+      "url": "https://franac18.github.io/MacrojaguarQR",
+      "logo": "img/MacroJG.png"
+    },
+    "FredyUrquizo": {
+      "url": "https://tarjetas.mostazaweb.net/urquizofotografia",
+      "logo": ""
+    }
   }
 }
