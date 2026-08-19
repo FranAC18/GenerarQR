@@ -677,6 +677,8 @@ input:checked + .slider:before {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
 /* Colors Row & Pickers */
 .colors-row {
   display: grid;
