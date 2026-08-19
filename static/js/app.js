@@ -1,5 +1,5 @@
 /**
- * QR Digital Studio - Frontend Application Engine
+ * QR Digital Studio - Frontend Application Engine (Vercel & Supabase Edition)
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -14,11 +14,13 @@ document.addEventListener('DOMContentLoaded', () => {
     logoSizeRatio: 0.22,
     border: 4,
     errorCorrection: 'H',
+    isDynamic: true,
     cachedTarjetas: {},
-    availableLogos: []
+    availableLogos: [],
+    systemStatus: { mode: 'local', connected: false }
   };
 
-  // Referencias a elementos del DOM
+  // Referencias al DOM
   const dom = {
     themeToggleBtn: document.getElementById('themeToggleBtn'),
     tabDesignerBtn: document.getElementById('tabDesignerBtn'),
@@ -26,10 +28,13 @@ document.addEventListener('DOMContentLoaded', () => {
     designerSection: document.getElementById('designerSection'),
     catalogSection: document.getElementById('catalogSection'),
     cardsCountBadge: document.getElementById('cardsCountBadge'),
+    systemStatusBadge: document.getElementById('systemStatusBadge'),
     
     // Selectores de tipo
     typeBtns: document.querySelectorAll('.type-btn'),
     typeForms: document.querySelectorAll('.type-form'),
+    isDynamicToggle: document.getElementById('isDynamicToggle'),
+    qrModeBadge: document.getElementById('qrModeBadge'),
 
     // Inputs generales
     cardIdInput: document.getElementById('cardIdInput'),
@@ -58,6 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
     logoPreviewBar: document.getElementById('logoPreviewBar'),
     logoThumbImg: document.getElementById('logoThumbImg'),
     logoNameLabel: document.getElementById('logoNameLabel'),
+    logoStorageSource: document.getElementById('logoStorageSource'),
     removeLogoBtn: document.getElementById('removeLogoBtn'),
     logoStatusBadge: document.getElementById('logoStatusBadge'),
     availableLogosGrid: document.getElementById('availableLogosGrid'),
@@ -99,12 +105,36 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // INICIALIZACIÓN
   // ==========================================
-  function init() {
+  async function init() {
     initTheme();
     setupEventListeners();
+    await checkSystemStatus();
     loadAvailableLogos();
     loadCatalog();
     triggerLivePreview();
+  }
+
+  // ==========================================
+  // ESTADO DEL SISTEMA (SUPABASE / LOCAL)
+  // ==========================================
+  async function checkSystemStatus() {
+    try {
+      const res = await fetch('/api/status');
+      if (res.ok) {
+        state.systemStatus = await res.json();
+        if (state.systemStatus.mode === 'supabase') {
+          dom.systemStatusBadge.className = 'status-pill supabase';
+          dom.systemStatusBadge.innerHTML = '🟢 Supabase Cloud';
+          dom.systemStatusBadge.title = 'Conectado a Supabase PostgreSQL y Storage';
+        } else {
+          dom.systemStatusBadge.className = 'status-pill local';
+          dom.systemStatusBadge.innerHTML = '🟡 Modo Local';
+          dom.systemStatusBadge.title = 'Usando config.json y almacenamiento local';
+        }
+      }
+    } catch (e) {
+      console.warn('No se pudo verificar estado del sistema:', e);
+    }
   }
 
   // ==========================================
@@ -156,6 +186,21 @@ document.addEventListener('DOMContentLoaded', () => {
       switchTab('designerSection');
     });
 
+    // Dynamic QR Toggle
+    dom.isDynamicToggle.addEventListener('change', (e) => {
+      state.isDynamic = e.target.checked;
+      if (state.isDynamic) {
+        dom.qrModeBadge.textContent = '⚡ QR Dinámico';
+        dom.qrModeBadge.style.background = 'rgba(245, 158, 11, 0.15)';
+        dom.qrModeBadge.style.color = 'var(--warning)';
+      } else {
+        dom.qrModeBadge.textContent = '📌 QR Estático';
+        dom.qrModeBadge.style.background = 'rgba(99, 102, 241, 0.15)';
+        dom.qrModeBadge.style.color = 'var(--accent-primary)';
+      }
+      triggerLivePreview();
+    });
+
     // Content Type Selector
     dom.typeBtns.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -171,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
-    // Inputs reactivos para previsualización instantánea
+    // Inputs reactivos
     const reactiveInputs = [
       dom.cardIdInput, dom.cardTitleInput, dom.urlInput,
       dom.vcardName, dom.vcardOrg, dom.vcardTitle, dom.vcardPhone, dom.vcardEmail, dom.vcardUrl,
@@ -287,7 +332,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Guardar en Catálogo
     dom.saveToCatalogBtn.addEventListener('click', saveCurrentCardToCatalog);
 
-    // Copiar Imagen al portapapeles
+    // Copiar Imagen
     dom.copyImageBtn.addEventListener('click', copyQrImageToClipboard);
 
     // Buscador en Catálogo
@@ -308,7 +353,8 @@ document.addEventListener('DOMContentLoaded', () => {
       border: state.border,
       error_correction: state.errorCorrection,
       format: format,
-      filename: cardId
+      filename: cardId,
+      is_dynamic: state.isDynamic
     };
 
     if (state.contentType === 'url') {
@@ -342,7 +388,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // PREVISUALIZACIÓN EN TIEMPO REAL (DEBOUNCED)
+  // PREVISUALIZACIÓN EN TIEMPO REAL
   // ==========================================
   function triggerLivePreview() {
     clearTimeout(debounceTimer);
@@ -361,14 +407,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
 
         dom.qrPreviewImg.src = data.preview_url;
-        dom.previewTargetUrl.textContent = data.raw_content.length > 80 
-          ? data.raw_content.substring(0, 80) + '...' 
-          : data.raw_content;
-
-        dom.previewStatusText.textContent = 'QR Válido y Escaneable';
+        dom.previewTargetUrl.textContent = data.raw_content;
+        dom.previewStatusText.textContent = state.isDynamic ? 'QR Dinámico Listo' : 'QR Estático Listo';
       } catch (err) {
         console.error(err);
-        dom.previewStatusText.textContent = 'Error generando vista previa';
+        dom.previewStatusText.textContent = 'Error en previsualización';
       } finally {
         dom.qrLoadingOverlay.classList.remove('active');
       }
@@ -401,20 +444,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await res.json();
       state.logoPath = data.logo_path;
-      updateLogoUI(data.logo_path);
+      updateLogoUI(data.logo_path, data.storage);
       triggerLivePreview();
       loadAvailableLogos();
-      showToast('¡Logotipo actualizado exitosamente!', 'success');
+      showToast(`¡Logo subido con éxito (${data.storage})!`, 'success');
     } catch (err) {
       showToast(err.message, 'error');
     }
   }
 
-  function updateLogoUI(logoPath) {
+  function updateLogoUI(logoPath, storage = null) {
     if (logoPath) {
       dom.logoPreviewBar.style.display = 'flex';
-      dom.logoThumbImg.src = `/${logoPath}?t=${Date.now()}`;
-      dom.logoNameLabel.textContent = logoPath;
+      const isRemote = logoPath.startsWith('http');
+      dom.logoThumbImg.src = isRemote ? logoPath : `/${logoPath}?t=${Date.now()}`;
+      
+      const fileNameOnly = logoPath.split('/').pop();
+      dom.logoNameLabel.textContent = fileNameOnly;
+      dom.logoStorageSource.textContent = isRemote ? 'Supabase Storage' : 'Almacenamiento Local';
       dom.logoStatusBadge.textContent = 'Logo Activo';
       dom.logoStatusBadge.style.display = 'inline-block';
     } else {
@@ -440,7 +487,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         pill.addEventListener('click', () => {
           state.logoPath = logo.path;
-          updateLogoUI(logo.path);
+          updateLogoUI(logo.path, logo.storage);
           triggerLivePreview();
           document.querySelectorAll('.quick-logo-pill').forEach(p => p.classList.remove('active'));
           pill.classList.add('active');
@@ -523,7 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // ==========================================
-  // CATÁLOGO DE TARJETAS (CRUD)
+  // CATÁLOGO DE TARJETAS (CRUD CON ANALÍTICAS)
   // ==========================================
   async function loadCatalog() {
     try {
@@ -561,6 +608,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const url = typeof cardData === 'object' ? cardData.url : cardData;
       const logo = typeof cardData === 'object' ? cardData.logo : '';
       const title = typeof cardData === 'object' && cardData.title ? cardData.title : id;
+      const isDynamic = typeof cardData === 'object' ? cardData.is_dynamic : true;
+      const scanCount = typeof cardData === 'object' ? (cardData.scan_count || 0) : 0;
 
       const cardEl = document.createElement('div');
       cardEl.className = 'card-item';
@@ -575,8 +624,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <h3 class="card-item-title">${escapeHtml(title)}</h3>
           <p class="card-item-url" title="${escapeHtml(url)}">${escapeHtml(url)}</p>
           <div class="card-item-meta">
-            <span class="badge">${logo ? 'Con Logo' : 'Estándar'}</span>
-            <span style="font-size: 0.75rem; color: var(--text-muted);">ID: ${escapeHtml(id)}</span>
+            <span class="scan-badge" title="Número de escaneos registrados">👁️ ${scanCount} escaneos</span>
+            <span class="badge" style="font-size: 0.65rem;">${isDynamic ? '⚡ Dinámico' : '📌 Estático'}</span>
           </div>
         </div>
         <div class="card-item-actions">
@@ -592,19 +641,19 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      // Cargar preview asíncrono para la tarjeta
-      loadCardThumbnail(id, url, logo);
+      // Cargar miniatura
+      loadCardThumbnail(id, url, logo, isDynamic);
 
-      // Eventos de botones
+      // Eventos
       cardEl.querySelector('.edit-card-btn').addEventListener('click', () => loadCardIntoDesigner(id, cardData));
-      cardEl.querySelector('.download-card-btn').addEventListener('click', () => downloadCardFromCatalog(id, url, logo));
+      cardEl.querySelector('.download-card-btn').addEventListener('click', () => downloadCardFromCatalog(id, url, logo, isDynamic));
       cardEl.querySelector('.delete-card-btn').addEventListener('click', () => deleteCardFromCatalog(id));
 
       dom.cardsCatalogGrid.appendChild(cardEl);
     });
   }
 
-  async function loadCardThumbnail(id, url, logo) {
+  async function loadCardThumbnail(id, url, logo, isDynamic) {
     try {
       const res = await fetch('/api/qr/preview', {
         method: 'POST',
@@ -612,6 +661,8 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({
           data: url,
           logo_path: logo || null,
+          filename: id,
+          is_dynamic: isDynamic,
           box_size: 8,
           border: 2
         })
@@ -638,11 +689,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const title = typeof cardData === 'object' && cardData.title ? cardData.title : id;
     const fill = typeof cardData === 'object' && cardData.fill_color ? cardData.fill_color : '#000000';
     const back = typeof cardData === 'object' && cardData.back_color ? cardData.back_color : '#FFFFFF';
+    const isDyn = typeof cardData === 'object' ? (cardData.is_dynamic ?? true) : true;
 
     dom.cardIdInput.value = id;
     dom.cardTitleInput.value = title;
     dom.urlInput.value = url;
     
+    dom.isDynamicToggle.checked = isDyn;
+    state.isDynamic = isDyn;
+
     // Switch to URL type by default
     document.querySelector('.type-btn[data-type="url"]').click();
 
@@ -661,7 +716,7 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast(`Tarjeta '${id}' cargada en el diseñador`, 'info');
   }
 
-  async function downloadCardFromCatalog(id, url, logo) {
+  async function downloadCardFromCatalog(id, url, logo, isDynamic) {
     try {
       showToast(`Generando PNG para '${id}'...`, 'info');
       const res = await fetch('/api/qr/download', {
@@ -671,7 +726,8 @@ document.addEventListener('DOMContentLoaded', () => {
           data: url,
           logo_path: logo || null,
           format: 'png',
-          filename: id
+          filename: id,
+          is_dynamic: isDynamic
         })
       });
       const blob = await res.blob();
@@ -701,7 +757,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const targetUrl = payload.data || dom.previewTargetUrl.textContent;
 
     try {
-      showToast('Guardando tarjeta en catálogo...', 'info');
+      showToast('Guardando tarjeta en la base de datos...', 'info');
       const res = await fetch('/api/tarjetas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -711,7 +767,9 @@ document.addEventListener('DOMContentLoaded', () => {
           logo: state.logoPath || '',
           title: dom.cardTitleInput.value.trim() || cardId,
           fill_color: state.fillColor,
-          back_color: state.backColor
+          back_color: state.backColor,
+          is_dynamic: state.isDynamic,
+          content_type: state.contentType
         })
       });
 
@@ -720,7 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(err.detail || 'Error al guardar');
       }
 
-      showToast(`¡Tarjeta '${cardId}' guardada en config.json!`, 'success');
+      showToast(`¡Tarjeta '${cardId}' guardada con éxito!`, 'success');
       loadCatalog();
     } catch (err) {
       showToast(`Error: ${err.message}`, 'error');

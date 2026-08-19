@@ -1,31 +1,28 @@
 import os
 import io
-import json
 import zipfile
 import urllib.parse
 from typing import Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, FileResponse
+from fastapi import FastAPI, HTTPException, UploadFile, File, Request
+from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from core.qr_engine import QREngine
+from core.db_manager import db
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_FILE = os.path.join(BASE_DIR, "config.json")
-IMG_DIR = os.path.join(BASE_DIR, "img")
 STATIC_DIR = os.path.join(BASE_DIR, "static")
-OUTPUT_DIR = os.path.join(BASE_DIR, "output")
+IMG_DIR = os.path.join(BASE_DIR, "img")
 
-os.makedirs(IMG_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(IMG_DIR, exist_ok=True)
 
 app = FastAPI(
     title="QR Digital Studio API",
-    description="API para generación, personalización y gestión de códigos QR para tarjetas digitales.",
-    version="2.0.0"
+    description="API Serverless para generación, personalización y gestión de códigos QR para tarjetas digitales con Supabase y Vercel.",
+    version="2.1.0"
 )
 
 app.add_middleware(
@@ -35,23 +32,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-def load_config() -> Dict[str, Any]:
-    if not os.path.exists(CONFIG_FILE):
-        default_cfg = {"tarjetas": {}}
-        save_config(default_cfg)
-        return default_cfg
-    try:
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception:
-        return {"tarjetas": {}}
-
-
-def save_config(cfg: Dict[str, Any]) -> None:
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2, ensure_ascii=False)
 
 
 # Modelos Pydantic
@@ -95,6 +75,8 @@ class QRGenerateRequest(BaseModel):
     border: int = 4
     format: str = "png"  # png or svg
     filename: Optional[str] = "qr_codigo"
+    is_dynamic: bool = False
+    base_url: Optional[str] = None
 
 
 class TarjetaSaveRequest(BaseModel):
@@ -104,11 +86,39 @@ class TarjetaSaveRequest(BaseModel):
     title: Optional[str] = None
     fill_color: Optional[str] = "#000000"
     back_color: Optional[str] = "#FFFFFF"
+    logo_size_ratio: Optional[float] = 0.22
+    border: Optional[int] = 4
+    error_correction: Optional[str] = "H"
+    content_type: Optional[str] = "url"
+    is_dynamic: Optional[bool] = False
+    vcard_data: Optional[Dict[str, Any]] = None
+    whatsapp_data: Optional[Dict[str, Any]] = None
+    wifi_data: Optional[Dict[str, Any]] = None
 
 
-def resolve_payload_text(req: QRGenerateRequest) -> str:
+def get_base_url(req: Optional[Request] = None, override: Optional[str] = None) -> str:
+    """Calcula la URL base del servidor para generar enlaces dinámicos /c/{slug}."""
+    if override and override.strip():
+        return override.strip().rstrip("/")
+    env_base = os.getenv("BASE_URL", "").strip().rstrip("/")
+    if env_base:
+        return env_base
+    if req:
+        scheme = req.headers.get("x-forwarded-proto", req.url.scheme)
+        host = req.headers.get("x-forwarded-host", req.url.netloc)
+        return f"{scheme}://{host}"
+    return "http://localhost:8000"
+
+
+def resolve_payload_text(req: QRGenerateRequest, base_url_str: str) -> str:
     """Convierte el tipo de contenido al texto o payload final para el QR."""
     c_type = req.content_type.lower()
+    
+    # Si es QR Dinámico, apunta a la URL corta de redirección
+    if req.is_dynamic and req.filename:
+        clean_id = req.filename.strip()
+        return f"{base_url_str}/c/{clean_id}"
+
     if c_type == "vcard" and req.vcard:
         return QREngine.format_vcard(
             name=req.vcard.name,
@@ -134,71 +144,91 @@ def resolve_payload_text(req: QRGenerateRequest) -> str:
     return req.data or "https://example.com"
 
 
-# Rutas API
+# =============================================================================
+# REDIRECCIÓN DE CÓDIGOS QR DINÁMICOS CON ANALÍTICAS
+# =============================================================================
+@app.get("/c/{card_id}")
+def redirect_dynamic_qr(card_id: str):
+    """
+    Endpoint de redirección para Códigos QR Dinámicos.
+    Registra el escaneo (+1 en scan_count) y redirige al usuario a la URL final.
+    """
+    card = db.get_card(card_id)
+    if not card:
+        raise HTTPException(status_code=404, detail="Tarjeta digital no encontrada.")
+
+    # Incrementar analíticas de escaneo
+    db.increment_scan(card_id)
+
+    target_url = card.get("url", "").strip()
+    if not target_url:
+        raise HTTPException(status_code=400, detail="La tarjeta no tiene URL de destino configurada.")
+
+    # Asegurar esquema http/https si es enlace web
+    if not target_url.startswith(("http://", "https://", "tel:", "mailto:", "BEGIN:VCARD", "WIFI:")):
+        target_url = f"https://{target_url}"
+
+    return RedirectResponse(url=target_url, status_code=307)
+
+
+# =============================================================================
+# ENDPOINTS REST DE LA API
+# =============================================================================
+@app.get("/api/status")
+def get_system_status():
+    """Retorna el estado de la conexión a Supabase o Modo Local."""
+    return db.get_status()
+
+
 @app.get("/api/tarjetas")
 def get_tarjetas():
-    """Obtiene el catálogo de tarjetas registradas en config.json."""
-    config = load_config()
-    tarjetas = config.get("tarjetas", {})
-    return {"tarjetas": tarjetas}
+    """Obtiene el catálogo de tarjetas guardadas (desde Supabase o config.json)."""
+    tarjetas = db.get_cards()
+    return {"tarjetas": tarjetas, "source": db.get_status()["mode"]}
 
 
 @app.post("/api/tarjetas")
 def save_or_update_tarjeta(payload: TarjetaSaveRequest):
-    """Guarda o actualiza una tarjeta en config.json."""
+    """Guarda o actualiza una tarjeta en la base de datos."""
     card_id = payload.id.strip()
     if not card_id:
         raise HTTPException(status_code=400, detail="El identificador de la tarjeta es obligatorio.")
     if not payload.url.strip():
         raise HTTPException(status_code=400, detail="La URL o contenido es obligatorio.")
 
-    config = load_config()
-    if "tarjetas" not in config:
-        config["tarjetas"] = {}
-
-    config["tarjetas"][card_id] = {
-        "url": payload.url.strip(),
-        "logo": payload.logo.strip() if payload.logo else "",
-        "title": payload.title.strip() if payload.title else card_id,
-        "fill_color": payload.fill_color or "#000000",
-        "back_color": payload.back_color or "#FFFFFF"
-    }
-
-    save_config(config)
-    return {"status": "success", "message": f"Tarjeta '{card_id}' guardada correctamente.", "card": config["tarjetas"][card_id]}
+    card_dict = payload.model_dump()
+    res = db.save_card(card_id, card_dict)
+    return {"status": "success", "message": f"Tarjeta '{card_id}' guardada correctamente.", "card": res.get("card")}
 
 
 @app.delete("/api/tarjetas/{card_id}")
 def delete_tarjeta(card_id: str):
-    """Elimina una tarjeta del catálogo config.json."""
-    config = load_config()
-    tarjetas = config.get("tarjetas", {})
-    if card_id not in tarjetas:
-        raise HTTPException(status_code=404, detail="Tarjeta no encontrada.")
-
-    del tarjetas[card_id]
-    config["tarjetas"] = tarjetas
-    save_config(config)
+    """Elimina una tarjeta del catálogo."""
+    success = db.delete_card(card_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Tarjeta no encontrada o no se pudo eliminar.")
     return {"status": "success", "message": f"Tarjeta '{card_id}' eliminada."}
 
 
 @app.post("/api/qr/preview")
-def generate_preview(req: QRGenerateRequest):
-    """Genera la vista previa en base64 (Data URI) para renderizado dinámico en tiempo real."""
-    text_data = resolve_payload_text(req)
+def generate_preview(req: QRGenerateRequest, request: Request):
+    """Genera la vista previa en base64 para renderizado dinámico en tiempo real."""
+    base_url_str = get_base_url(request, req.base_url)
+    text_data = resolve_payload_text(req, base_url_str)
     
-    logo_path = None
-    if req.logo_path and req.logo_path.strip():
-        resolved_path = os.path.join(BASE_DIR, req.logo_path.strip())
-        if os.path.exists(resolved_path):
-            logo_path = resolved_path
+    logo_src = req.logo_path.strip() if req.logo_path else None
+    # Si es ruta local relativa que existe, resolverla
+    if logo_src and not logo_src.startswith(("http://", "https://", "data:")):
+        local_p = os.path.join(BASE_DIR, logo_src)
+        if os.path.exists(local_p):
+            logo_src = local_p
 
     try:
         preview_uri = QREngine.generate_png_base64(
             data=text_data,
             fill_color=req.fill_color,
             back_color=req.back_color,
-            logo_source=logo_path,
+            logo_source=logo_src,
             logo_size_ratio=req.logo_size_ratio,
             logo_bg_margin_ratio=req.logo_bg_margin_ratio,
             logo_bg_color=req.logo_bg_color,
@@ -210,23 +240,25 @@ def generate_preview(req: QRGenerateRequest):
         return {
             "status": "success",
             "preview_url": preview_uri,
-            "raw_content": text_data
+            "raw_content": text_data,
+            "is_dynamic": req.is_dynamic
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generando vista previa: {str(e)}")
 
 
 @app.post("/api/qr/download")
-def download_qr(req: QRGenerateRequest):
-    """Genera y descarga el archivo QR en alta definición (PNG o SVG)."""
-    text_data = resolve_payload_text(req)
+def download_qr(req: QRGenerateRequest, request: Request):
+    """Genera y descarga el archivo QR en alta definición (PNG o SVG) 100% en memoria."""
+    base_url_str = get_base_url(request, req.base_url)
+    text_data = resolve_payload_text(req, base_url_str)
     clean_filename = "".join(c for c in (req.filename or "codigo_qr") if c.isalnum() or c in ("-", "_")).strip() or "codigo_qr"
     
-    logo_path = None
-    if req.logo_path and req.logo_path.strip():
-        resolved_path = os.path.join(BASE_DIR, req.logo_path.strip())
-        if os.path.exists(resolved_path):
-            logo_path = resolved_path
+    logo_src = req.logo_path.strip() if req.logo_path else None
+    if logo_src and not logo_src.startswith(("http://", "https://", "data:")):
+        local_p = os.path.join(BASE_DIR, logo_src)
+        if os.path.exists(local_p):
+            logo_src = local_p
 
     fmt = req.format.lower()
     if fmt == "svg":
@@ -234,7 +266,7 @@ def download_qr(req: QRGenerateRequest):
             data=text_data,
             fill_color=req.fill_color,
             back_color=req.back_color,
-            logo_source=logo_path,
+            logo_source=logo_src,
             logo_size_ratio=req.logo_size_ratio,
             error_correction=req.error_correction,
             box_size=req.box_size,
@@ -250,7 +282,7 @@ def download_qr(req: QRGenerateRequest):
             data=text_data,
             fill_color=req.fill_color,
             back_color=req.back_color,
-            logo_source=logo_path,
+            logo_source=logo_src,
             logo_size_ratio=req.logo_size_ratio,
             logo_bg_margin_ratio=req.logo_bg_margin_ratio,
             logo_bg_color=req.logo_bg_color,
@@ -268,54 +300,43 @@ def download_qr(req: QRGenerateRequest):
 
 @app.post("/api/upload-logo")
 async def upload_logo(file: UploadFile = File(...)):
-    """Sube un logo a la carpeta img/ y devuelve su ruta relativa."""
+    """Sube un logo a Supabase Storage (o img/ local) y devuelve su URL pública o relativa."""
     allowed_exts = {".png", ".jpg", ".jpeg", ".webp", ".svg"}
     filename = file.filename or "logo.png"
     ext = os.path.splitext(filename)[1].lower()
     if ext not in allowed_exts:
         raise HTTPException(status_code=400, detail="Formato de imagen no soportado. Usa PNG, JPG, WEBP o SVG.")
 
-    # Guardar en img/
-    safe_name = "".join(c for c in filename if c.isalnum() or c in (".", "-", "_"))
-    dest_path = os.path.join(IMG_DIR, safe_name)
-    
     contents = await file.read()
-    with open(dest_path, "wb") as f:
-        f.write(contents)
-
-    rel_path = f"img/{safe_name}"
+    content_type = file.content_type or "image/png"
+    
+    upload_res = await db.upload_logo(contents, filename, content_type)
     return {
         "status": "success",
-        "message": "Logotipo subido exitosamente.",
-        "logo_path": rel_path,
-        "filename": safe_name
+        "message": f"Logotipo subido exitosamente a {upload_res.get('storage')}.",
+        "logo_path": upload_res.get("path"),
+        "url": upload_res.get("url"),
+        "filename": upload_res.get("filename"),
+        "storage": upload_res.get("storage")
     }
 
 
 @app.get("/api/logos")
 def list_logos():
-    """Lista todos los logos disponibles en la carpeta img/."""
-    logos = []
-    if os.path.exists(IMG_DIR):
-        for fname in os.listdir(IMG_DIR):
-            if fname.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".svg")):
-                logos.append({
-                    "filename": fname,
-                    "path": f"img/{fname}",
-                    "url": f"/img/{fname}"
-                })
+    """Lista todos los logos disponibles (en Supabase Storage o en img/)."""
+    logos = db.list_logos()
     return {"logos": logos}
 
 
 @app.get("/api/qr/export-all")
-def export_all_zip():
-    """Genera y empaqueta en un archivo .ZIP todos los QRs registrados en config.json en PNG y SVG."""
-    config = load_config()
-    tarjetas = config.get("tarjetas", {})
+def export_all_zip(request: Request):
+    """Genera y empaqueta en un archivo .ZIP en memoria todos los QRs registrados."""
+    tarjetas = db.get_cards()
 
     if not tarjetas:
-        raise HTTPException(status_code=404, detail="No hay tarjetas registradas en config.json para exportar.")
+        raise HTTPException(status_code=404, detail="No hay tarjetas registradas para exportar.")
 
+    base_url_str = get_base_url(request)
     zip_buffer = io.BytesIO()
 
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
@@ -325,28 +346,34 @@ def export_all_zip():
                 logo = data.get("logo", "")
                 fill_color = data.get("fill_color", "#000000")
                 back_color = data.get("back_color", "#FFFFFF")
+                is_dynamic = data.get("is_dynamic", False)
             else:
                 url = str(data)
                 logo = ""
                 fill_color = "#000000"
                 back_color = "#FFFFFF"
+                is_dynamic = False
 
             if not url:
                 continue
 
-            logo_full_path = None
-            if logo and logo.strip():
-                resolved = os.path.join(BASE_DIR, logo.strip())
-                if os.path.exists(resolved):
-                    logo_full_path = resolved
+            # Payload a codificar en el QR
+            target_data = f"{base_url_str}/c/{nombre}" if is_dynamic else url
+
+            # Resolver logo
+            logo_src = logo if logo else None
+            if logo_src and not logo_src.startswith(("http://", "https://", "data:")):
+                local_p = os.path.join(BASE_DIR, logo_src)
+                if os.path.exists(local_p):
+                    logo_src = local_p
 
             # Generar PNG HD
             try:
                 png_bytes = QREngine.generate_png_bytes(
-                    data=url,
+                    data=target_data,
                     fill_color=fill_color,
                     back_color=back_color,
-                    logo_source=logo_full_path,
+                    logo_source=logo_src,
                     box_size=20,
                     border=4
                 )
@@ -357,10 +384,10 @@ def export_all_zip():
             # Generar SVG Vectorial
             try:
                 svg_content = QREngine.generate_svg(
-                    data=url,
+                    data=target_data,
                     fill_color=fill_color,
                     back_color=back_color,
-                    logo_source=logo_full_path,
+                    logo_source=logo_src,
                     box_size=10,
                     border=4
                 )
@@ -376,9 +403,11 @@ def export_all_zip():
     )
 
 
-# Montar archivos estáticos
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-app.mount("/img", StaticFiles(directory=IMG_DIR), name="img")
+# Montar archivos estáticos para servidor local
+if os.path.exists(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+if os.path.exists(IMG_DIR):
+    app.mount("/img", StaticFiles(directory=IMG_DIR), name="img")
 
 
 @app.get("/")
@@ -387,7 +416,7 @@ def serve_index():
     index_path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return HTMLResponse("<h1>QR Digital Studio</h1><p>Inicializando frontend...</p>")
+    return HTMLResponse("<h1>QR Digital Studio</h1><p>Frontend inicializándose...</p>")
 
 
 if __name__ == "__main__":

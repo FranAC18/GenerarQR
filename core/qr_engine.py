@@ -2,11 +2,11 @@ import os
 import io
 import base64
 import urllib.parse
+import urllib.request
 from typing import Optional, Union, Dict, Any, Tuple
 import qrcode
 from qrcode.constants import ERROR_CORRECT_L, ERROR_CORRECT_M, ERROR_CORRECT_Q, ERROR_CORRECT_H
 from PIL import Image, ImageDraw, ImageOps
-
 
 ERROR_LEVELS = {
     "L": ERROR_CORRECT_L,
@@ -20,8 +20,8 @@ class QREngine:
     """
     Motor centralizado y de alto rendimiento para generar códigos QR
     personalizados en formatos PNG (rasterizado HD) y SVG (vectorial escalable),
-    con soporte para incrustación de logotipos, colores personalizados,
-    y esquemas de tarjetas de presentación digital (vCard, WhatsApp, WiFi, URL).
+    con soporte para incrustación de logotipos locales y remotos (Supabase Storage),
+    colores personalizados, y esquemas de tarjetas de presentación digital (vCard, WhatsApp, WiFi, URL).
     """
 
     @staticmethod
@@ -68,7 +68,6 @@ class QREngine:
     @staticmethod
     def format_wifi(ssid: str, password: str = "", auth_type: str = "WPA", hidden: bool = False) -> str:
         """Genera formato estándar para conexión automática a red WiFi al escanear."""
-        # Formato: WIFI:T:WPA;S:MyNetwork;P:MyPassword;H:false;;
         auth = auth_type.upper() if auth_type else "nopass"
         h_str = "true" if hidden else "false"
         return f"WIFI:T:{auth};S:{ssid};P:{password};H:{h_str};;"
@@ -112,7 +111,6 @@ class QREngine:
         Genera una imagen PIL en formato RGBA/RGB con alta resolución,
         colores personalizados e incrustación limpia de logotipo centrado.
         """
-        # Si se especifica logo, forzamos error_correction='H' para garantizar lectura
         if logo_source is not None and error_correction != "H":
             error_correction = "H"
 
@@ -130,20 +128,16 @@ class QREngine:
             if logo_img:
                 qr_width, qr_height = qr_image.size
                 
-                # Tamaño máximo del logo proporcional
                 max_logo_w = int(qr_width * logo_size_ratio)
                 max_logo_h = int(qr_height * logo_size_ratio)
 
-                # Ajustar manteniendo proporción de aspecto
                 logo_img = logo_img.convert("RGBA")
                 logo_img.thumbnail((max_logo_w, max_logo_h), Image.LANCZOS)
                 lw, lh = logo_img.size
 
-                # Marco/Fondo protector detrás del logo para escaneo impecable
                 bg_w = int(lw * logo_bg_margin_ratio)
                 bg_h = int(lh * logo_bg_margin_ratio)
 
-                # Crear placa de fondo
                 bg_layer = Image.new("RGBA", (bg_w, bg_h), (0, 0, 0, 0))
                 draw_bg = ImageDraw.Draw(bg_layer)
                 
@@ -154,11 +148,9 @@ class QREngine:
                     fill=logo_bg_color
                 )
 
-                # Posición de la placa de fondo en el centro
                 bg_pos = ((qr_width - bg_w) // 2, (qr_height - bg_h) // 2)
                 qr_image.alpha_composite(bg_layer, bg_pos)
 
-                # Posición del logo dentro de la placa
                 logo_pos = ((qr_width - lw) // 2, (qr_height - lh) // 2)
                 qr_image.alpha_composite(logo_img, logo_pos)
 
@@ -208,13 +200,11 @@ class QREngine:
             f'viewBox="0 0 {total_size} {total_size}" width="100%" height="100%">'
         ]
 
-        # Fondo
         if back_color and back_color.lower() != "transparent":
             svg_parts.append(
                 f'<rect width="{total_size}" height="{total_size}" fill="{back_color}" />'
             )
 
-        # Módulos del QR agrupados en un solo path para optimización y nitidez máxima
         path_data = []
         for r_idx, row in enumerate(matrix):
             for c_idx, cell in enumerate(row):
@@ -228,22 +218,18 @@ class QREngine:
                 f'<path d="{" ".join(path_data)}" fill="{fill_color}" shape-rendering="crispEdges" />'
             )
 
-        # Incrustación de Logo si existe
         if logo_source:
             logo_img = cls._load_image(logo_source)
             if logo_img:
                 logo_img = logo_img.convert("RGBA")
-                # Calcular dimensiones en coordenadas SVG
                 max_w = total_size * logo_size_ratio
                 max_h = total_size * logo_size_ratio
                 
-                # Proporción
                 lw_orig, lh_orig = logo_img.size
                 ratio = min(max_w / lw_orig, max_h / lh_orig)
                 lw = lw_orig * ratio
                 lh = lh_orig * ratio
 
-                # Fondo protector
                 bg_w = lw * 1.25
                 bg_h = lh * 1.25
                 bg_x = (total_size - bg_w) / 2
@@ -255,7 +241,6 @@ class QREngine:
                     f'rx="{rx:.2f}" fill="#FFFFFF" />'
                 )
 
-                # Convertir logo a base64 png para incrustar en SVG
                 buf = io.BytesIO()
                 logo_img.save(buf, format="PNG")
                 b64_logo = base64.b64encode(buf.getvalue()).decode("ascii")
@@ -273,12 +258,25 @@ class QREngine:
 
     @classmethod
     def _load_image(cls, source: Union[str, bytes, Image.Image]) -> Optional[Image.Image]:
-        """Carga de manera segura una imagen desde ruta, bytes o instancia PIL."""
-        if isinstance(source, Image.Image):
-            return source.copy()
-        if isinstance(source, bytes):
-            return Image.open(io.BytesIO(source))
-        if isinstance(source, str):
-            if os.path.exists(source):
-                return Image.open(source)
+        """Carga de manera segura una imagen desde ruta local, URL remota (Supabase), bytes o instancia PIL."""
+        try:
+            if isinstance(source, Image.Image):
+                return source.copy()
+            if isinstance(source, bytes):
+                return Image.open(io.BytesIO(source))
+            if isinstance(source, str):
+                # Caso: Data URI Base64
+                if source.startswith("data:image"):
+                    base64_data = source.split(",", 1)[1]
+                    return Image.open(io.BytesIO(base64.b64decode(base64_data)))
+                # Caso: URL remota (ej. Supabase Storage)
+                if source.startswith(("http://", "https://")):
+                    req = urllib.request.Request(source, headers={"User-Agent": "QRStudio/2.0"})
+                    with urllib.request.urlopen(req, timeout=5) as response:
+                        return Image.open(io.BytesIO(response.read()))
+                # Caso: Ruta de archivo local
+                if os.path.exists(source):
+                    return Image.open(source)
+        except Exception as e:
+            print(f"[WARN] Error cargando logo desde '{source}': {e}")
         return None

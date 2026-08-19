@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>QR Digital Studio - Diseñador y Generador de Tarjetas Digitales</title>
-  <meta name="description" content="Generador profesional de códigos QR interactivos con soporte para logos, tarjetas de presentación vCard, WhatsApp, WiFi y exportación HD en PNG y SVG.">
+  <title>QR Digital Studio - Generador de Tarjetas Digitales y QRs Dinámicos</title>
+  <meta name="description" content="Generador profesional de códigos QR interactivos y dinámicos con soporte para logos, vCard, WhatsApp, WiFi, analíticas de escaneo y respaldo en Supabase.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -25,7 +25,10 @@
           </svg>
         </div>
         <div class="brand-text">
-          <h1 class="brand-title">QR Digital Studio</h1>
+          <div class="brand-title-row">
+            <h1 class="brand-title">QR Digital Studio</h1>
+            <span id="systemStatusBadge" class="status-pill local" title="Estado de la base de datos">🟡 Modo Local</span>
+          </div>
           <p class="brand-subtitle">Diseñador y Gestor de Tarjetas Digitales</p>
         </div>
       </div>
@@ -92,13 +95,29 @@
             </div>
           </div>
 
+          <!-- MODO QR DINÁMICO TOGGLE -->
+          <div class="dynamic-toggle-box">
+            <div class="dynamic-toggle-info">
+              <div class="dynamic-toggle-title">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#f59e0b" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                <span>Código QR Dinámico (Redirigible)</span>
+                <span class="badge badge-accent">Recomendado</span>
+              </div>
+              <p class="dynamic-toggle-desc">Apunta a tu dominio y redirige al destino. Podrás cambiar la URL cuando quieras sin reimprimir el QR físico.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="isDynamicToggle" checked>
+              <span class="slider round"></span>
+            </label>
+          </div>
+
           <!-- Campos Dinámicos según tipo -->
           <div class="fields-container">
             
             <!-- Campo ID de Tarjeta (para guardar en catálogo) -->
             <div class="input-row">
               <div class="form-group flex-1">
-                <label for="cardIdInput">Identificador de Tarjeta (clave única)</label>
+                <label for="cardIdInput">Identificador de Tarjeta (slug único)</label>
                 <input type="text" id="cardIdInput" class="form-control" placeholder="ej. macrojaguar, mi_empresa" value="macrojaguar">
               </div>
               <div class="form-group flex-1">
@@ -212,7 +231,7 @@
                 <div class="drop-zone-content">
                   <div class="drop-icon">📁</div>
                   <p class="drop-text">Arrastra tu logo aquí o <strong>haz clic para seleccionar</strong></p>
-                  <p class="drop-hint">PNG transparente, JPG o SVG (máx. 5MB)</p>
+                  <p class="drop-hint">Sube directo a Supabase Storage (PNG, JPG, SVG)</p>
                 </div>
               </div>
 
@@ -223,7 +242,7 @@
                 </div>
                 <div class="logo-info">
                   <span class="logo-name" id="logoNameLabel">img/MacroJG.png</span>
-                  <span class="logo-meta">Incrustado en el centro del QR</span>
+                  <span class="logo-meta" id="logoStorageSource">Almacenado localmente</span>
                 </div>
                 <button type="button" class="btn btn-ghost btn-sm" id="removeLogoBtn" title="Quitar logo">
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -328,8 +347,11 @@
 
             <!-- Resumen de contenido -->
             <div class="qr-meta-box">
-              <span class="meta-label">Destino actual:</span>
-              <p class="meta-url" id="previewTargetUrl">https://franac18.github.io/MacrojaguarQR</p>
+              <div class="meta-row">
+                <span class="meta-label">Destino que codifica el QR:</span>
+                <span class="dynamic-badge" id="qrModeBadge">⚡ QR Dinámico</span>
+              </div>
+              <p class="meta-url" id="previewTargetUrl">http://localhost:8000/c/macrojaguar</p>
             </div>
 
             <!-- Botones de Acción -->
@@ -370,7 +392,7 @@
         <div class="catalog-header card">
           <div class="catalog-header-left">
             <h2>Catálogo de Tarjetas Digitales</h2>
-            <p>Gestiona todas las tarjetas guardadas en <code>config.json</code>, descárgalas individualmente o expórtalas en un solo archivo ZIP.</p>
+            <p>Gestiona todas las tarjetas guardadas en la base de datos, supervisa sus escaneos y descárgalas individualmente o en ZIP.</p>
           </div>
           <div class="catalog-header-right">
             <button id="exportAllZipBtn" class="btn btn-primary">
@@ -388,7 +410,7 @@
         <div class="search-bar-wrapper">
           <div class="input-with-icon">
             <span class="input-icon">🔍</span>
-            <input type="text" id="cardsSearchInput" class="form-control" placeholder="Buscar tarjetas por nombre o enlace...">
+            <input type="text" id="cardsSearchInput" class="form-control" placeholder="Buscar tarjetas por nombre, slug o enlace...">
           </div>
         </div>
 
@@ -404,7 +426,7 @@
 
   <footer class="app-footer">
     <div class="footer-content">
-      <p><strong>QR Digital Studio</strong> • Generador de Códigos QR de Alta Definición</p>
+      <p><strong>QR Digital Studio</strong> • Diseñado para Vercel & Supabase</p>
       <p class="footer-links">
         <a href="/docs" target="_blank">Documentación API Swagger</a> •
         <a href="https://github.com/FranAC18/GenerarQR" target="_blank" rel="noopener">GitHub Repositorio</a>

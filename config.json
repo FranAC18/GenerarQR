@@ -2,11 +2,22 @@
   "tarjetas": {
     "macrojaguar": {
       "url": "https://franac18.github.io/MacrojaguarQR",
-      "logo": "img/MacroJG.png"
+      "logo": "img/MacroJG.png",
+      "scan_count": 1
     },
     "FredyUrquizo": {
       "url": "https://tarjetas.mostazaweb.net/urquizofotografia",
       "logo": ""
+    },
+    "testdynamic": {
+      "url": "https://franac18.github.io/MacrojaguarQR",
+      "logo": "img/MacroJG.png",
+      "title": "Test Dynamic Card",
+      "fill_color": "#000000",
+      "back_color": "#FFFFFF",
+      "is_dynamic": true,
+      "scan_count": 0,
+      "content_type": "url"
     }
   }
 }
