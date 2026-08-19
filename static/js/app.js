@@ -90,6 +90,9 @@ document.addEventListener('DOMContentLoaded', () => {
     downloadPngBtn: document.getElementById('downloadPngBtn'),
     downloadSvgBtn: document.getElementById('downloadSvgBtn'),
     saveToCatalogBtn: document.getElementById('saveToCatalogBtn'),
+    saveBtnLabel: document.getElementById('saveBtnLabel'),
+    downloadOptionsPanel: document.getElementById('downloadOptionsPanel'),
+    testRedirectLinkBtn: document.getElementById('testRedirectLinkBtn'),
     copyImageBtn: document.getElementById('copyImageBtn'),
     exportZipTopBtn: document.getElementById('exportZipTopBtn'),
     exportAllZipBtn: document.getElementById('exportAllZipBtn'),
@@ -117,6 +120,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function init() {
     initTheme();
     setupEventListeners();
+    updateLogoUI(state.logoPath, 'local');
     await checkSystemStatus();
     loadAvailableLogos();
     loadCatalog();
@@ -366,16 +370,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Botones de Descarga
-    dom.downloadPngBtn.addEventListener('click', () => downloadFile('png'));
-    dom.downloadSvgBtn.addEventListener('click', () => downloadFile('svg'));
-    dom.exportZipTopBtn.addEventListener('click', downloadAllZip);
-    dom.exportAllZipBtn.addEventListener('click', downloadAllZip);
+    dom.downloadPngBtn?.addEventListener('click', () => downloadFile('png'));
+    dom.downloadSvgBtn?.addEventListener('click', () => downloadFile('svg'));
+    dom.exportZipTopBtn?.addEventListener('click', downloadAllZip);
+    dom.exportAllZipBtn?.addEventListener('click', downloadAllZip);
 
-    // Guardar en Catálogo
-    dom.saveToCatalogBtn.addEventListener('click', saveCurrentCardToCatalog);
+    // Guardar en Catálogo (Botón Principal Grande)
+    dom.saveToCatalogBtn?.addEventListener('click', saveCurrentCardToCatalog);
+
+    // Probar Enlace de Redirección
+    dom.testRedirectLinkBtn?.addEventListener('click', () => {
+      const cardId = dom.cardIdInput.value.trim();
+      if (!cardId) {
+        showToast('Debes guardar la tarjeta antes de probar el enlace.', 'error');
+        return;
+      }
+      const url = `/c/${encodeURIComponent(cardId)}`;
+      window.open(url, '_blank');
+    });
 
     // Copiar Imagen
-    dom.copyImageBtn.addEventListener('click', copyQrImageToClipboard);
+    dom.copyImageBtn?.addEventListener('click', copyQrImageToClipboard);
 
     // Buscador en Catálogo
     dom.cardsSearchInput?.addEventListener('input', filterCatalogCards);
@@ -487,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await res.json();
       state.logoPath = data.logo_path;
-      updateLogoUI(data.logo_path, data.storage);
+      updateLogoUI(data.logo_path, data.storage, data.url);
       triggerLivePreview();
       loadAvailableLogos();
       showToast(`¡Logo subido con éxito (${data.storage})!`, 'success');
@@ -496,14 +511,52 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function updateLogoUI(logoPath, storage = null) {
+  function resolveLogoPreviewUrl(logoPath) {
+    const rawPath = String(logoPath || '').trim();
+    if (!rawPath) return '';
+
+    if (/^(https?:|data:|blob:|\/\/)/i.test(rawPath)) {
+      return rawPath;
+    }
+
+    const cleanPath = rawPath
+      .replace(/\\/g, '/')
+      .replace(/^\/+/, '')
+      .split(/[?#]/, 1)[0];
+    const assetPath = cleanPath.toLowerCase().startsWith('img/')
+      ? cleanPath
+      : `img/${cleanPath}`;
+
+    // Avoid keeping a stale broken image in the browser cache after an upload.
+    return `/${assetPath}?v=${encodeURIComponent(assetPath)}-${Date.now()}`;
+  }
+
+  function updateLogoUI(logoPath, storage = null, previewUrl = null) {
     if (logoPath) {
       dom.logoPreviewBar.style.display = 'flex';
-      const isRemote = logoPath.startsWith('http');
-      const cleanPath = isRemote ? logoPath : (logoPath.startsWith('/') ? logoPath : `/${logoPath}`);
-      dom.logoThumbImg.src = cleanPath;
-      
-      const fileNameOnly = logoPath.split('/').pop();
+      const rawPath = String(logoPath);
+      const isRemote = /^(https?:|data:|blob:|\/\/)/i.test(rawPath);
+      const fileNameOnly = rawPath.split(/[?#]/, 1)[0].split('/').pop();
+      const imageSource = previewUrl || rawPath;
+      const imageUrl = /^(https?:|data:|blob:|\/\/)/i.test(imageSource)
+        ? imageSource
+        : resolveLogoPreviewUrl(imageSource);
+
+      dom.logoThumbImg.classList.remove('is-broken');
+      dom.logoThumbImg.closest('.logo-thumb-wrapper')?.classList.remove('is-broken');
+      dom.logoThumbImg.alt = 'Logo actual';
+      dom.logoThumbImg.onload = () => {
+        dom.logoThumbImg.classList.remove('is-broken');
+        dom.logoThumbImg.closest('.logo-thumb-wrapper')?.classList.remove('is-broken');
+      };
+      dom.logoThumbImg.onerror = () => {
+        dom.logoThumbImg.classList.add('is-broken');
+        dom.logoThumbImg.alt = '';
+        dom.logoThumbImg.removeAttribute('src');
+        dom.logoThumbImg.closest('.logo-thumb-wrapper')?.classList.add('is-broken');
+      };
+      dom.logoThumbImg.src = imageUrl;
+
       dom.logoNameLabel.textContent = fileNameOnly;
       dom.logoStorageSource.textContent = isRemote ? 'Supabase Storage' : 'Almacenamiento Local';
       dom.logoStatusBadge.textContent = 'Logo Activo';
@@ -511,6 +564,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       dom.logoPreviewBar.style.display = 'none';
       dom.logoStatusBadge.style.display = 'none';
+      dom.logoThumbImg.removeAttribute('src');
+      dom.logoThumbImg.closest('.logo-thumb-wrapper')?.classList.remove('is-broken');
     }
   }
 
@@ -757,6 +812,11 @@ document.addEventListener('DOMContentLoaded', () => {
     state.logoPath = logo || null;
     updateLogoUI(state.logoPath);
 
+    // Activar panel de descargas al cargar una tarjeta ya guardada
+    dom.downloadOptionsPanel?.classList.add('active');
+    dom.saveToCatalogBtn?.classList.add('saved');
+    if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = '💾 Actualizar Tarjeta';
+
     switchTab('designerSection');
     triggerLivePreview();
     showToast(`Tarjeta '${id}' cargada en el diseñador`, 'info');
@@ -794,13 +854,18 @@ document.addEventListener('DOMContentLoaded', () => {
   async function saveCurrentCardToCatalog() {
     const cardId = dom.cardIdInput.value.trim();
     if (!cardId) {
-      showToast('Debes ingresar un identificador para la tarjeta.', 'error');
+      showToast('Debes ingresar un identificador único (slug) para la tarjeta.', 'error');
       dom.cardIdInput.focus();
       return;
     }
 
     const payload = buildPayload('png');
     const targetUrl = payload.data || dom.previewTargetUrl.textContent;
+    if (!targetUrl || targetUrl.includes('https://...')) {
+      showToast('Ingresa una dirección URL o contenido para guardar la tarjeta.', 'error');
+      dom.urlInput.focus();
+      return;
+    }
 
     try {
       showToast('Guardando tarjeta en la base de datos...', 'info');
@@ -824,7 +889,12 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(err.detail || 'Error al guardar');
       }
 
-      showToast(`¡Tarjeta '${cardId}' guardada con éxito!`, 'success');
+      // Desplegar panel de opciones de descarga con animación
+      dom.downloadOptionsPanel?.classList.add('active');
+      dom.saveToCatalogBtn?.classList.add('saved');
+      if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = '✅ Tarjeta Guardada (Actualizar)';
+
+      showToast(`¡Tarjeta '${cardId}' guardada con éxito! Opciones de descarga activadas.`, 'success');
       loadCatalog();
     } catch (err) {
       showToast(`Error: ${err.message}`, 'error');
@@ -867,6 +937,12 @@ document.addEventListener('DOMContentLoaded', () => {
     state.cardTitle = '';
     state.logoPath = 'img/kobaia.png';
     updateLogoUI('img/kobaia.png');
+    
+    // Ocultar panel de descarga al crear nueva tarjeta hasta que se guarde
+    dom.downloadOptionsPanel?.classList.remove('active');
+    dom.saveToCatalogBtn?.classList.remove('saved');
+    if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = '💾 Guardar y Generar Código QR';
+
     triggerLivePreview();
   }
 

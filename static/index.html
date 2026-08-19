@@ -238,7 +238,7 @@
               <!-- Preview del logo seleccionado -->
               <div class="logo-preview-bar" id="logoPreviewBar">
                 <div class="logo-thumb-wrapper">
-                  <img id="logoThumbImg" src="/img/kobaia.png" alt="Logo actual">
+                  <img id="logoThumbImg" src="" alt="Logo actual" decoding="async">
                 </div>
                 <div class="logo-info">
                   <span class="logo-name" id="logoNameLabel">img/kobaia.png</span>
@@ -356,26 +356,40 @@
 
             <!-- Botones de Acción -->
             <div class="preview-actions">
-              <div class="action-row">
-                <button type="button" class="btn btn-primary btn-lg flex-1" id="downloadPngBtn">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                  <span>Descargar PNG (HD)</span>
-                </button>
-                <button type="button" class="btn btn-secondary btn-lg flex-1" id="downloadSvgBtn">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
-                  <span>Descargar SVG</span>
-                </button>
-              </div>
+              <!-- Botón Principal Grande de Guardar -->
+              <button type="button" class="btn btn-primary btn-save-main" id="saveToCatalogBtn">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                <span id="saveBtnLabel">💾 Guardar y Generar Código QR</span>
+              </button>
 
-              <div class="action-row secondary-actions">
-                <button type="button" class="btn btn-outline flex-1" id="saveToCatalogBtn">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-                  <span>Guardar en "Mis Tarjetas"</span>
-                </button>
-                <button type="button" class="btn btn-outline" id="copyImageBtn" title="Copiar imagen al portapapeles">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                  <span>Copiar</span>
-                </button>
+              <!-- Panel de Opciones de Descarga (se activa al guardar) -->
+              <div class="download-options-panel" id="downloadOptionsPanel">
+                <div class="save-success-banner" id="saveSuccessBanner">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#10b981" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  <span>¡Tarjeta guardada! Opciones de descarga disponibles:</span>
+                </div>
+
+                <div class="action-row">
+                  <button type="button" class="btn btn-primary flex-1" id="downloadPngBtn">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <span>Descargar PNG (HD)</span>
+                  </button>
+                  <button type="button" class="btn btn-secondary flex-1" id="downloadSvgBtn">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                    <span>Descargar SVG</span>
+                  </button>
+                </div>
+
+                <div class="action-row secondary-actions">
+                  <button type="button" class="btn btn-outline flex-1" id="copyImageBtn" title="Copiar imagen al portapapeles">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                    <span>Copiar Imagen</span>
+                  </button>
+                  <button type="button" class="btn btn-outline flex-1" id="testRedirectLinkBtn" title="Abrir enlace de redirección dinámica">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    <span>Probar Enlace</span>
+                  </button>
+                </div>
               </div>
             </div>
 

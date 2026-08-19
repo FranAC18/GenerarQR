@@ -1,4 +1,4 @@
-# 🚀 QR Digital Studio - Generador & Gestor de Tarjetas Digitales y QRs Dinámicos
+# 🚀 Kobaia QR - Generador & Gestor de Tarjetas Digitales y QRs Dinámicos
 
 Aplicación web profesional e interactiva para la creación, personalización, gestión y exportación en alta definición (PNG HD y SVG Vectorial) de códigos QR para tarjetas de presentación digital, con soporte nativo para **Códigos QR Dinámicos (Redirigibles)**, analíticas de escaneo en tiempo real y arquitectura lista para desplegar en **Vercel** respaldada por **Supabase**.
 
@@ -8,15 +8,19 @@ Aplicación web profesional e interactiva para la creación, personalización, g
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-teal.svg?logo=fastapi)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
+> 📖 **Para la especificación técnica completa, consulta el archivo [DOCUMENTACION.md](DOCUMENTACION.md)**.
+
 ---
 
-## 🌟 Nuevas Características y Arquitectura Cloud
+## 🌟 Características Principales
 
 - **⚡ Códigos QR Dinámicos (`/c/{slug}`)**:
   - Los códigos QR apuntan a tu dominio y redirigen al destino real de forma instantánea.
   - Puedes actualizar el enlace de destino, teléfono o red social en cualquier momento **sin necesidad de volver a imprimir la tarjeta física**.
 - **📊 Métricas y Analíticas de Escaneo**:
   - Contador de escaneos en tiempo real (`scan_count`) para medir el impacto de cada tarjeta.
+- **💾 Flujo de Guardado y Activación Inteligente**:
+  - Botón principal de **Guardar y Activar** que registra la tarjeta antes de habilitar las descargas de PNG y SVG.
 - **☁️ Supabase Cloud (PostgreSQL + Object Storage)**:
   - Base de datos en la nube para persistencia global sincronizada.
   - Bucket `qr-logos` para hospedar logotipos de clientes con CDN pública permanente.
@@ -35,26 +39,27 @@ Aplicación web profesional e interactiva para la creación, personalización, g
 ```
 scriptQr/
 ├── api/
-│   └── index.py         # Punto de entrada Serverless para Vercel (@vercel/python)
+│   └── index.py            # Punto de entrada Serverless para Vercel (@vercel/python)
 ├── core/
 │   ├── __init__.py
-│   ├── qr_engine.py     # Motor de generación de QRs en memoria (PNG, SVG, Logos remotos y locales)
-│   └── db_manager.py    # Gestor de base de datos híbrido (Supabase Cloud + Local Fallback)
-├── static/              # Frontend Web Moderno
-│   ├── index.html       # Estructura de la aplicación con selector de QR dinámico
+│   ├── qr_engine.py        # Motor de generación de QRs en memoria (PNG, SVG, Logos remotos y locales)
+│   └── db_manager.py       # Gestor de base de datos híbrido (Supabase Cloud + Local Fallback)
+├── img/
+│   └── kobaia.png          # Logotipo predeterminado
+├── static/                 # Frontend Web Moderno
+│   ├── index.html          # Estructura de la aplicación SPA
 │   ├── css/
-│   │   └── styles.css   # Sistema de diseño Glassmorphism, Dark/Light mode
+│   │   └── styles.css      # Sistema de diseño Glassmorphism, Dark/Light mode
 │   └── js/
-│       └── app.js       # Lógica reactiva del cliente con analíticas
-├── img/                 # Logotipos locales
-├── output/              # Salida de exportaciones locales
-├── app.py               # Servidor FastAPI principal y endpoints de redirección
-├── run.py               # Lanzador local con apertura automática de navegador
-├── run.bat              # Lanzador rápido con doble clic para Windows
-├── supabase_schema.sql  # Script SQL para inicializar Supabase en 1 clic
-├── vercel.json          # Archivo de configuración de despliegue en Vercel
-├── .env.example         # Plantilla de variables de entorno
-└── requirements.txt     # Dependencias de Python
+│       └── app.js          # Lógica reactiva del cliente con analíticas
+├── app.py                  # Servidor FastAPI principal y endpoints de redirección
+├── run.py                  # Lanzador local con auto-detección de entorno virtual y puertos
+├── run.bat                 # Lanzador rápido con doble clic para Windows
+├── supabase_schema.sql     # Script SQL para inicializar Supabase en 1 clic
+├── vercel.json             # Archivo de configuración de despliegue en Vercel
+├── DOCUMENTACION.md        # Documentación técnica completa
+├── .env.example            # Plantilla de variables de entorno
+└── requirements.txt        # Dependencias de Python
 ```
 
 ---
@@ -64,7 +69,7 @@ scriptQr/
 ### Paso 1: Configurar Supabase (100% Gratuito)
 1. Crea una cuenta gratuita en [supabase.com](https://supabase.com) y crea un nuevo proyecto.
 2. Ve a la pestaña **SQL Editor** en el panel de Supabase.
-3. Abre el archivo [supabase_schema.sql](file:///f:/Prácticas/Tarjetas%20digitales/scriptQr/supabase_schema.sql) de este repositorio, copia su contenido, pégalo en el editor y haz clic en **Run**.
+3. Abre el archivo [supabase_schema.sql](supabase_schema.sql) de este repositorio, copia su contenido, pégalo en el editor y haz clic en **Run**.
 4. En **Project Settings -> API**, copia:
    - **Project URL** (`SUPABASE_URL`)
    - **anon / public key** (`SUPABASE_KEY`)
@@ -84,37 +89,13 @@ scriptQr/
 
 ## 💻 Ejecución Local
 
-### 1. Iniciar la Aplicación Web
+### Iniciar la Aplicación Web
 ```bash
-# Windows / Linux / Mac
 python run.py
 ```
-> O haz doble clic en `run.bat` en Windows. La aplicación se abrirá en `http://localhost:8000`.
-
-### 2. Ejecutar por Consola (CLI)
-```bash
-python main.py
-```
+> O haz doble clic en `run.bat` en Windows. La aplicación se abrirá automáticamente en tu navegador.
 
 ---
 
-## ⚙️ Endpoints de la API
-
-| Método | Endpoint | Descripción |
-| :--- | :--- | :--- |
-| `GET` | `/c/{card_id}` | **Redirección de QR Dinámico** (+1 al contador de escaneos) |
-| `GET` | `/api/status` | Informa si el sistema está conectado a Supabase o en Modo Local |
-| `GET` | `/api/tarjetas` | Lista todas las tarjetas guardadas |
-| `POST` | `/api/tarjetas` | Crea o actualiza una tarjeta en la base de datos |
-| `DELETE` | `/api/tarjetas/{id}` | Elimina una tarjeta del catálogo |
-| `POST` | `/api/qr/preview` | Genera vista previa reactiva en base64 |
-| `POST` | `/api/qr/download` | Descarga el QR individual en PNG o SVG |
-| `POST` | `/api/upload-logo` | Sube un logo a Supabase Storage (o almacenamiento local) |
-| `GET` | `/api/qr/export-all` | Genera y descarga un archivo `.zip` con todas las tarjetas |
-
----
-
-## 👨‍💻 Autor
-
-Desarrollado y mantenido por [FranAC18](https://github.com/FranAC18).
-Repositorio: [FranAC18/GenerarQR](https://github.com/FranAC18/GenerarQR)
+## 👨‍💻 Autor & Branding
+Desarrollado con ❤️ por **[Kobaia Dev](https://www.instagram.com/kobaia.dev/)**.
