@@ -225,6 +225,12 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.mobileDownloadPngBtn?.addEventListener('click', () => downloadFile('png'));
     dom.mobileSaveCatalogBtn?.addEventListener('click', saveCurrentCardToCatalog);
 
+    function markAsUnsaved() {
+      dom.downloadOptionsPanel?.classList.remove('active');
+      dom.saveToCatalogBtn?.classList.remove('saved');
+      if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = 'Guardar y Generar Código QR';
+    }
+
     // Dynamic QR Toggle
     dom.isDynamicToggle.addEventListener('change', (e) => {
       state.isDynamic = e.target.checked;
@@ -237,6 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.qrModeBadge.style.background = 'rgba(99, 102, 241, 0.15)';
         dom.qrModeBadge.style.color = 'var(--accent-primary)';
       }
+      markAsUnsaved();
       triggerLivePreview();
     });
 
@@ -258,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetForm = document.getElementById(`formType${capitalize(state.contentType)}`);
         if (targetForm) targetForm.classList.add('active');
 
+        markAsUnsaved();
         triggerLivePreview();
       });
     });
@@ -274,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
         input.addEventListener('input', () => {
           if (input === dom.cardIdInput) state.cardId = input.value;
           if (input === dom.cardTitleInput) state.cardTitle = input.value;
+          markAsUnsaved();
           triggerLivePreview();
         });
       }
@@ -889,12 +898,12 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(err.detail || 'Error al guardar');
       }
 
-      // Desplegar panel de opciones de descarga con animación
+      // Desplegar panel de opciones de descarga exclusivamente al guardar
       dom.downloadOptionsPanel?.classList.add('active');
       dom.saveToCatalogBtn?.classList.add('saved');
-      if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = '✅ Tarjeta Guardada (Actualizar)';
+      if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = 'Guardar Cambios';
 
-      showToast(`¡Tarjeta '${cardId}' guardada con éxito! Opciones de descarga activadas.`, 'success');
+      showToast(`¡Tarjeta '${cardId}' guardada con éxito!`, 'success');
       loadCatalog();
     } catch (err) {
       showToast(`Error: ${err.message}`, 'error');
