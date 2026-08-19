@@ -6,9 +6,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // Estado global de la aplicación
   const state = {
     contentType: 'url',
-    cardId: 'macrojaguar',
-    cardTitle: 'Macro Jaguar QR',
-    logoPath: 'img/MacroJG.png',
+    cardId: 'kobaia',
+    cardTitle: 'Kobaia Dev',
+    logoPath: 'img/kobaia.png',
     fillColor: '#000000',
     backColor: '#FFFFFF',
     logoSizeRatio: 0.22,
@@ -845,11 +845,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function resetToDefaultCard() {
-    dom.cardIdInput.value = 'nueva_tarjeta';
-    dom.cardTitleInput.value = 'Mi Nueva Tarjeta Digital';
-    dom.urlInput.value = 'https://mi-tarjeta.digital';
-    state.logoPath = null;
-    updateLogoUI(null);
+    dom.cardIdInput.value = 'kobaia';
+    dom.cardTitleInput.value = 'Kobaia Dev';
+    dom.urlInput.value = 'https://www.instagram.com/kobaia.dev/';
+    state.logoPath = 'img/kobaia.png';
+    updateLogoUI('img/kobaia.png');
     triggerLivePreview();
   }
 

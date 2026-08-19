@@ -60,6 +60,14 @@ USING (bucket_id = 'qr-logos');
 INSERT INTO public.tarjetas (id, title, url, logo_url, is_dynamic, style_config)
 VALUES 
     (
+        'kobaia', 
+        'Kobaia Dev', 
+        'https://www.instagram.com/kobaia.dev/', 
+        'img/kobaia.png',
+        true,
+        '{"fill_color": "#000000", "back_color": "#FFFFFF", "logo_size_ratio": 0.22, "border": 4}'::jsonb
+    ),
+    (
         'macrojaguar', 
         'Macro Jaguar QR', 
         'https://franac18.github.io/MacrojaguarQR', 
