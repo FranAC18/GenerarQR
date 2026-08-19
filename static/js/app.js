@@ -6,8 +6,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Estado global de la aplicación
   const state = {
     contentType: 'url',
-    cardId: 'kobaia',
-    cardTitle: 'Kobaia Dev',
+    cardId: '',
+    cardTitle: '',
     logoPath: 'img/kobaia.png',
     fillColor: '#000000',
     backColor: '#FFFFFF',
@@ -449,7 +449,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
 
         dom.qrPreviewImg.src = data.preview_url;
-        dom.previewTargetUrl.textContent = data.raw_content;
+        const userHasInput = Boolean(dom.urlInput.value.trim() || dom.cardIdInput.value.trim() || dom.vcardName.value.trim() || dom.waPhone.value.trim() || dom.wifiSsid.value.trim() || dom.textInput.value.trim());
+        dom.previewTargetUrl.textContent = userHasInput ? data.raw_content : 'https://... (Escribe una URL o contenido)';
         dom.previewStatusText.textContent = state.isDynamic ? 'QR Dinámico Listo' : 'QR Estático Listo';
       } catch (err) {
         console.error(err);
@@ -845,9 +846,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function resetToDefaultCard() {
-    dom.cardIdInput.value = 'kobaia';
-    dom.cardTitleInput.value = 'Kobaia Dev';
-    dom.urlInput.value = 'https://www.instagram.com/kobaia.dev/';
+    dom.cardIdInput.value = '';
+    dom.cardTitleInput.value = '';
+    dom.urlInput.value = '';
+    dom.vcardName.value = '';
+    dom.vcardPhone.value = '';
+    dom.vcardOrg.value = '';
+    dom.vcardTitle.value = '';
+    dom.vcardEmail.value = '';
+    dom.vcardUrl.value = '';
+    dom.waPhone.value = '';
+    dom.waMessage.value = '';
+    dom.wifiSsid.value = '';
+    dom.wifiPassword.value = '';
+    dom.textInput.value = '';
+    state.cardId = '';
+    state.cardTitle = '';
     state.logoPath = 'img/kobaia.png';
     updateLogoUI('img/kobaia.png');
     triggerLivePreview();
