@@ -1,39 +1,40 @@
 import webbrowser
 import threading
 import time
-import socket
-import uvicorn
 import os
 import sys
 
-def find_available_port(start_port=8000, max_attempts=10):
-    for p in range(start_port, start_port + max_attempts):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            try:
-                s.bind(("127.0.0.1", p))
-                return p
-            except OSError:
-                continue
-    return start_port
+# Asegurar que el directorio raíz esté en sys.path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
 
-def open_browser(port):
-    time.sleep(1.2)
-    webbrowser.open(f"http://127.0.0.1:{port}")
+from app import app
+import uvicorn
+
+PORT = 8000
+
+def open_browser():
+    """Abre el navegador web una vez que el servidor esté activo."""
+    time.sleep(1.0)
+    webbrowser.open(f"http://127.0.0.1:{PORT}")
 
 if __name__ == "__main__":
-    port = find_available_port(8000)
     print("=" * 60)
     print("🚀 INICIANDO QR DIGITAL STUDIO")
-    print(f"👉 Servidor disponible en: http://127.0.0.1:{port}")
-    print(f"👉 Documentación API:      http://127.0.0.1:{port}/docs")
+    print(f"👉 Aplicación Web:    http://127.0.0.1:{PORT}")
+    print(f"👉 Documentación API: http://127.0.0.1:{PORT}/docs")
     print("=" * 60)
+    print("\nPresiona CTRL+C en esta consola para detener el servidor.\n")
     
-    # Abrir navegador automáticamente
-    threading.Thread(target=open_browser, args=(port,), daemon=True).start()
+    # Abrir navegador en hilo secundario
+    threading.Thread(target=open_browser, daemon=True).start()
     
+    # Iniciar servidor Uvicorn con la instancia directa para máxima estabilidad en Windows
     try:
-        uvicorn.run("api.index:app", host="127.0.0.1", port=port, reload=True)
-    except Exception as e:
-        print(f"\n[ERROR] No se pudo iniciar el servidor en el puerto {port}: {e}")
-        print("Intentando en puerto alternativo 8080...")
-        uvicorn.run("api.index:app", host="127.0.0.1", port=8080, reload=True)
+        uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="info")
+    except OSError as e:
+        print(f"\n[AVISO] El puerto {PORT} está ocupado. Intentando en puerto 8080...")
+        PORT = 8080
+        threading.Thread(target=open_browser, daemon=True).start()
+        uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="info")
