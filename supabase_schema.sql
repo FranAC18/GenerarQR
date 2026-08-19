@@ -66,22 +66,6 @@ VALUES
         'img/kobaia.png',
         true,
         '{"fill_color": "#000000", "back_color": "#FFFFFF", "logo_size_ratio": 0.22, "border": 4}'::jsonb
-    ),
-    (
-        'macrojaguar', 
-        'Macro Jaguar QR', 
-        'https://franac18.github.io/MacrojaguarQR', 
-        'https://raw.githubusercontent.com/FranAC18/GenerarQR/main/img/MacroJG.png',
-        true,
-        '{"fill_color": "#000000", "back_color": "#FFFFFF", "logo_size_ratio": 0.22, "border": 4}'::jsonb
-    ),
-    (
-        'FredyUrquizo', 
-        'Fredy Urquizo Fotografía', 
-        'https://tarjetas.mostazaweb.net/urquizofotografia', 
-        'https://raw.githubusercontent.com/FranAC18/GenerarQR/main/img/iconourquizo.png',
-        true,
-        '{"fill_color": "#000000", "back_color": "#FFFFFF", "logo_size_ratio": 0.22, "border": 4}'::jsonb
     )
 ON CONFLICT (id) DO UPDATE 
 SET 

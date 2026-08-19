@@ -8,24 +8,6 @@
       "back_color": "#FFFFFF",
       "is_dynamic": true,
       "scan_count": 0
-    },
-    "macrojaguar": {
-      "url": "https://franac18.github.io/MacrojaguarQR",
-      "logo": "img/MacroJG.png",
-      "title": "Macro Jaguar QR",
-      "fill_color": "#000000",
-      "back_color": "#FFFFFF",
-      "is_dynamic": true,
-      "scan_count": 1
-    },
-    "FredyUrquizo": {
-      "url": "https://tarjetas.mostazaweb.net/urquizofotografia",
-      "logo": "img/iconourquizo.png",
-      "title": "Fredy Urquizo Fotografía",
-      "fill_color": "#000000",
-      "back_color": "#FFFFFF",
-      "is_dynamic": true,
-      "scan_count": 0
     }
   }
 }

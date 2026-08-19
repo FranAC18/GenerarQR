@@ -403,6 +403,23 @@ def export_all_zip(request: Request):
     )
 
 
+@app.get("/img/{file_name}")
+def get_image_file(file_name: str):
+    """Sirve imágenes locales de la carpeta img/ de forma garantizada."""
+    clean_name = os.path.basename(file_name)
+    file_path = os.path.join(IMG_DIR, clean_name)
+    if os.path.exists(file_path):
+        media_type = "image/png"
+        if clean_name.lower().endswith(".jpg") or clean_name.lower().endswith(".jpeg"):
+            media_type = "image/jpeg"
+        elif clean_name.lower().endswith(".svg"):
+            media_type = "image/svg+xml"
+        elif clean_name.lower().endswith(".webp"):
+            media_type = "image/webp"
+        return FileResponse(file_path, media_type=media_type)
+    raise HTTPException(status_code=404, detail="Logotipo no encontrado")
+
+
 # Montar archivos estáticos para servidor local
 if os.path.exists(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -416,7 +433,7 @@ def serve_index():
     index_path = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_path):
         return FileResponse(index_path)
-    return HTMLResponse("<h1>QR Digital Studio</h1><p>Frontend inicializándose...</p>")
+    return HTMLResponse("<h1>Kobaia QR</h1><p>Frontend inicializándose...</p>")
 
 
 if __name__ == "__main__":

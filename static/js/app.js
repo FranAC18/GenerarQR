@@ -500,7 +500,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoPath) {
       dom.logoPreviewBar.style.display = 'flex';
       const isRemote = logoPath.startsWith('http');
-      dom.logoThumbImg.src = isRemote ? logoPath : `/${logoPath}?t=${Date.now()}`;
+      const cleanPath = isRemote ? logoPath : (logoPath.startsWith('/') ? logoPath : `/${logoPath}`);
+      dom.logoThumbImg.src = cleanPath;
       
       const fileNameOnly = logoPath.split('/').pop();
       dom.logoNameLabel.textContent = fileNameOnly;
@@ -523,9 +524,11 @@ document.addEventListener('DOMContentLoaded', () => {
       state.availableLogos.forEach(logo => {
         const pill = document.createElement('button');
         pill.type = 'button';
-        pill.className = `quick-logo-pill ${state.logoPath === logo.path ? 'active' : ''}`;
+        const isCurrent = state.logoPath === logo.path || state.logoPath === logo.url;
+        pill.className = `quick-logo-pill ${isCurrent ? 'active' : ''}`;
+        const imgUrl = logo.url.startsWith('/') || logo.url.startsWith('http') ? logo.url : `/${logo.url}`;
         pill.innerHTML = `
-          <img src="${logo.url}" alt="${logo.filename}">
+          <img src="${imgUrl}" alt="${logo.filename}" onerror="this.style.display='none'">
           <span>${logo.filename}</span>
         `;
         pill.addEventListener('click', () => {
