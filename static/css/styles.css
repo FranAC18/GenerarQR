@@ -97,6 +97,12 @@ h1, h2, h3, h4, .brand-title {
   letter-spacing: -0.02em;
 }
 
+/* Anillo de foco visible para navegación por teclado */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+}
+
 /* Header */
 .app-header {
   position: sticky;
@@ -289,6 +295,13 @@ h1, h2, h3, h4, .brand-title {
   grid-template-columns: 1.25fr 0.95fr;
   gap: 2rem;
   align-items: start;
+  min-width: 0;
+}
+
+/* Evita que los paneles del grid se ensanchen más allá de su contenedor
+   (min-content de hijos como barras flex o inputs) y provoquen scroll horizontal */
+.studio-grid > * {
+  min-width: 0;
 }
 
 /* Cards & Glassmorphism */
@@ -313,6 +326,7 @@ h1, h2, h3, h4, .brand-title {
   border-radius: var(--radius-md);
   padding: 1rem 1.25rem;
   margin-bottom: 1.5rem;
+  cursor: pointer;
 }
 
 .dynamic-toggle-title {
@@ -518,6 +532,26 @@ input:checked + .slider:before {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1rem;
+  cursor: pointer;
+}
+
+.accordion-header::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--text-muted);
+  border-bottom: 2px solid var(--text-muted);
+  transform: rotate(45deg);
+  transition: transform var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.accordion-section.collapsed .accordion-header::after {
+  transform: rotate(-45deg);
+}
+
+.accordion-section.collapsed .accordion-body {
+  display: none;
 }
 
 .acc-title {
@@ -608,6 +642,7 @@ input:checked + .slider:before {
 
 .logo-info {
   flex: 1;
+  min-width: 0;
 }
 
 .logo-name {
@@ -615,11 +650,17 @@ input:checked + .slider:before {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .logo-meta {
   font-size: 0.75rem;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Gallery of logos */
@@ -1188,6 +1229,11 @@ input[type="range"] {
   text-decoration: underline;
 }
 
+/* Barra de acciones fija inferior (solo visible en móvil) */
+.mobile-actions {
+  display: none;
+}
+
 /* Responsive */
 
 /* ---------- Tablets & small laptops ---------- */
@@ -1270,6 +1316,44 @@ input[type="range"] {
   textarea {
     font-size: 16px;
   }
+
+  /* iOS: el fondo fijo provoca parpadeos y coste de renderizado en scroll */
+  body {
+    background-attachment: scroll;
+  }
+
+  /* Barra de acciones fija inferior (Descargar / Guardar) */
+  .mobile-actions {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 60;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem calc(0.75rem + env(safe-area-inset-bottom));
+    background: rgba(11, 15, 25, 0.92);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border-color);
+    box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.25);
+  }
+
+  [data-theme="light"] .mobile-actions {
+    background: rgba(255, 255, 255, 0.92);
+  }
+
+  .mobile-actions.hidden {
+    display: none;
+  }
+
+  body {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+  }
+
+  .toast-container {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
 }
 
 /* ---------- Teléfonos móviles ---------- */
@@ -1313,6 +1397,15 @@ input[type="range"] {
   .input-row {
     flex-direction: column;
     gap: 0.75rem;
+  }
+
+  /* Defensivo: permitir que hijos flex/grid encojan hasta 0 para evitar desbordes */
+  .content-type-selector > *,
+  .picker-wrapper > *,
+  .slider-control,
+  .input-with-icon .form-control,
+  .action-row .btn {
+    min-width: 0;
   }
 
   .colors-row {
@@ -1394,11 +1487,11 @@ input[type="range"] {
     min-height: 42px;
   }
 
-  /* Toasts: franja a ancho completo abajo (seguro para notch) */
+  /* Toasts: franja a ancho completo sobre la barra de acciones (seguro para notch) */
   .toast-container {
     left: 0.75rem;
     right: 0.75rem;
-    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
   }
 
   .toast {
@@ -1438,6 +1531,50 @@ input[type="range"] {
   }
 }
 
+/* ---------- Safe-area superior (notch) en móviles ---------- */
+@media (max-width: 820px) {
+  .app-header {
+    padding-top: calc(0.5rem + env(safe-area-inset-top));
+  }
+}
+
+/* ---------- Teléfonos en horizontal (poco alto): compactar y ocultar la barra fija ---------- */
+@media (max-width: 820px) and (orientation: landscape) and (max-height: 600px) {
+  .mobile-actions {
+    display: none;
+  }
+
+  body {
+    padding-bottom: 0;
+  }
+
+  .toast-container {
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .app-header {
+    padding-top: calc(0.35rem + env(safe-area-inset-top));
+    padding-bottom: 0.35rem;
+  }
+
+  .main-content {
+    padding: 0.75rem;
+  }
+
+  .brand-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .brand-title {
+    font-size: 0.95rem;
+  }
+
+  .nav-tab {
+    padding: 0.45rem 0.4rem;
+  }
+}
+
 /* ---------- Pantallas táctiles: quitar transformaciones hover "pegajosas" ---------- */
 @media (hover: none) {
   .type-btn:hover,
@@ -1447,5 +1584,17 @@ input[type="range"] {
   .btn-ghost:hover,
   .card-item:hover {
     transform: none;
+  }
+}
+
+/* ---------- Movimiento reducido (accesibilidad) ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

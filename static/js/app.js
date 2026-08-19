@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     typeBtns: document.querySelectorAll('.type-btn'),
     typeForms: document.querySelectorAll('.type-form'),
     isDynamicToggle: document.getElementById('isDynamicToggle'),
+    dynamicToggleBox: document.querySelector('.dynamic-toggle-box'),
     qrModeBadge: document.getElementById('qrModeBadge'),
 
     // Inputs generales
@@ -97,7 +98,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Catálogo
     cardsCatalogGrid: document.getElementById('cardsCatalogGrid'),
     cardsSearchInput: document.getElementById('cardsSearchInput'),
-    toastContainer: document.getElementById('toastContainer')
+    toastContainer: document.getElementById('toastContainer'),
+
+    // Barra de acciones móvil
+    mobileActionsBar: document.getElementById('mobileActionsBar'),
+    mobileDownloadPngBtn: document.getElementById('mobileDownloadPngBtn'),
+    mobileSaveCatalogBtn: document.getElementById('mobileSaveCatalogBtn'),
+
+    // Acordeones
+    accordionHeaders: document.querySelectorAll('.accordion-header')
   };
 
   let debounceTimer = null;
@@ -143,6 +152,13 @@ document.addEventListener('DOMContentLoaded', () => {
   function initTheme() {
     const savedTheme = localStorage.getItem('qr_studio_theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
+    syncThemeColor(savedTheme);
+  }
+
+  function syncThemeColor(theme) {
+    document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
+      meta.setAttribute('content', theme === 'dark' ? '#0b0f19' : '#f8fafc');
+    });
   }
 
   function toggleTheme() {
@@ -150,6 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('qr_studio_theme', newTheme);
+    syncThemeColor(newTheme);
     showToast(`Modo ${newTheme === 'dark' ? 'oscuro' : 'claro'} activado`, 'info');
   }
 
@@ -169,6 +186,11 @@ document.addEventListener('DOMContentLoaded', () => {
       dom.designerSection.classList.remove('active');
       loadCatalog();
     }
+
+    // En móvil la barra de acciones solo aplica al diseñador
+    if (dom.mobileActionsBar) {
+      dom.mobileActionsBar.classList.toggle('hidden', tabId !== 'designerSection');
+    }
   }
 
   // ==========================================
@@ -186,6 +208,19 @@ document.addEventListener('DOMContentLoaded', () => {
       switchTab('designerSection');
     });
 
+    // Acordeones colapsables (menos scroll en móvil)
+    dom.accordionHeaders.forEach(header => {
+      header.addEventListener('click', () => {
+        const section = header.closest('.accordion-section');
+        const collapsed = section ? section.classList.toggle('collapsed') : false;
+        header.setAttribute('aria-expanded', String(!collapsed));
+      });
+    });
+
+    // Barra de acciones móvil
+    dom.mobileDownloadPngBtn?.addEventListener('click', () => downloadFile('png'));
+    dom.mobileSaveCatalogBtn?.addEventListener('click', saveCurrentCardToCatalog);
+
     // Dynamic QR Toggle
     dom.isDynamicToggle.addEventListener('change', (e) => {
       state.isDynamic = e.target.checked;
@@ -199,6 +234,13 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.qrModeBadge.style.color = 'var(--accent-primary)';
       }
       triggerLivePreview();
+    });
+
+    // Área táctil ampliada: todo el cuadro conmuta el toggle
+    dom.dynamicToggleBox?.addEventListener('click', (e) => {
+      if (e.target.closest('a, button, input, label, .switch')) return;
+      dom.isDynamicToggle.checked = !dom.isDynamicToggle.checked;
+      dom.isDynamicToggle.dispatchEvent(new Event('change'));
     });
 
     // Content Type Selector
