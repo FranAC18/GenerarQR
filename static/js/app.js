@@ -67,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
     logoStorageSource: document.getElementById('logoStorageSource'),
     removeLogoBtn: document.getElementById('removeLogoBtn'),
     logoStatusBadge: document.getElementById('logoStatusBadge'),
-    availableLogosGrid: document.getElementById('availableLogosGrid'),
 
     // Estilos y colores
     fillColorPicker: document.getElementById('fillColorPicker'),
@@ -122,7 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     updateLogoUI(state.logoPath, 'local');
     await checkSystemStatus();
-    loadAvailableLogos();
     loadCatalog();
     triggerLivePreview();
   }
@@ -833,7 +831,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const payload = buildPayload('png');
     const targetUrl = payload.data || dom.previewTargetUrl.textContent;
     if (!targetUrl || targetUrl.includes('https://...')) {
-      showToast('Ingresa una dirección URL o contenido     try {
+      showToast('Ingresa una dirección URL o contenido para guardar la tarjeta.', 'error');
+      dom.urlInput.focus();
+      return;
+    }
+
+    try {
       showToast('Guardando tarjeta...', 'info');
 
       // Subir logotipo a almacenamiento ÚNICAMENTE ahora si hay un archivo nuevo cargado
