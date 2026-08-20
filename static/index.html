@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/static/css/styles.css?v=v7_crop_surface">
+  <link rel="stylesheet" href="/static/css/styles.css?v=v10_crop_performance">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230071e3'><rect x='2' y='2' width='8' height='8' rx='2'/><rect x='14' y='2' width='8' height='8' rx='2'/><rect x='2' y='14' width='8' height='8' rx='2'/><rect x='14' y='14' width='4' height='4'/><rect x='18' y='18' width='4' height='4'/></svg>">
 </head>
 <body>
@@ -334,6 +334,24 @@
               </div>
 
               <!-- Preview del logo seleccionado -->
+              <!-- Sliders de precisión -->
+              <div class="sliders-group">
+                <div class="slider-control slider-box">
+                  <div class="slider-header slider-head">
+                    <span class="slabel">Tamaño del Logo</span>
+                    <span class="slider-val" id="logoSizeVal">22%</span>
+                  </div>
+                  <input type="range" class="slider" id="logoSizeSlider" min="10" max="30" value="22" step="1" aria-label="Tamaño del logotipo central">
+                </div>
+
+                <div class="slider-control slider-box">
+                  <div class="slider-header slider-head">
+                    <span class="slabel">Margen de Seguridad</span>
+                    <span class="slider-val" id="borderVal">4 bloques</span>
+                  </div>
+                  <input type="range" class="slider" id="borderSlider" min="1" max="8" value="4" step="1" aria-label="Margen de borde del código QR">
+                </div>
+              </div>
               <div class="logo-preview-bar" id="logoPreviewBar">
                 <div class="logo-thumb-wrapper">
                   <img id="logoThumbImg" src="/img/kobaia.png" alt="Logo actual" decoding="async">
@@ -393,25 +411,6 @@
                   <button type="button" class="preset-pill" data-fill="#ff453a" data-back="#FFFFFF">Rojo Rubí</button>
                 </div>
               </div>
-
-              <!-- Sliders de precisión -->
-              <div class="sliders-group">
-                <div class="slider-control slider-box">
-                  <div class="slider-header slider-head">
-                    <span class="slabel">Tamaño del Logo</span>
-                    <span class="slider-val" id="logoSizeVal">22%</span>
-                  </div>
-                  <input type="range" class="slider" id="logoSizeSlider" min="10" max="30" value="22" step="1" aria-label="Tamaño del logotipo central">
-                </div>
-
-                <div class="slider-control slider-box">
-                  <div class="slider-header slider-head">
-                    <span class="slabel">Margen de Seguridad</span>
-                    <span class="slider-val" id="borderVal">4 bloques</span>
-                  </div>
-                  <input type="range" class="slider" id="borderSlider" min="1" max="8" value="4" step="1" aria-label="Margen de borde del código QR">
-                </div>
-              </div>
             </div>
           </div>
 
@@ -437,15 +436,6 @@
                   <div class="spinner"></div>
                 </div>
               </div>
-            </div>
-
-            <!-- Resumen de contenido codificado -->
-            <div class="qr-meta-box">
-              <div class="meta-row">
-                <span class="meta-label">Destino codificado en el QR:</span>
-                <span class="dynamic-badge" id="qrModeBadge">QR Dinámico</span>
-              </div>
-              <p class="meta-url" id="previewTargetUrl">https://... (Escribe una URL o contenido)</p>
             </div>
 
             <!-- Botones de Acción -->
@@ -552,7 +542,7 @@
   </main>
 
   <!-- Barra de acciones móvil (sticky bottom) -->
-  <div id="mobileActionsBar" class="mobile-actions" aria-label="Acciones rápidas en móvil">
+  <div id="mobileActionsBar" class="mobile-actions" aria-label="Acciones rápidas en móvil" hidden>
     <button type="button" class="btn btn-primary" id="mobileSaveCatalogBtn">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
       <span>Guardar QR</span>
@@ -623,7 +613,7 @@
     </div>
   </footer>
 
-  <script src="/static/js/app.js?v=v6_crop_controls"></script>
-  <script src="/static/js/app-ui.js?v=v6_crop_controls"></script>
+  <script src="/static/js/app.js?v=v10_crop_performance"></script>
+  <script src="/static/js/app-ui.js?v=v10_crop_performance"></script>
 </body>
 </html>

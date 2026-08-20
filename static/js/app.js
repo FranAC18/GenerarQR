@@ -20,9 +20,15 @@ document.addEventListener('DOMContentLoaded', () => {
     availableLogos: [],
     logoFileName: '',
     pendingLogoFile: null,
+    previewLogoDataUrl: null,
+    logoPreviewObjectUrl: null,
     cropSourceDataUrl: null,
     cropSourceFile: null,
+    cropSourceObjectUrl: null,
     cropSettings: null,
+    hasGeneratedQr: false,
+    hasUnsavedChanges: false,
+    lastPreviewRawContent: '',
     systemStatus: { mode: 'local', connected: false }
   };
 
@@ -150,13 +156,15 @@ document.addEventListener('DOMContentLoaded', () => {
     rotation: 0,
     sourceFile: null,
     sourceDataUrl: null,
-    sourceName: ''
+    sourceName: '',
+    loadToken: 0,
+    isProcessing: false
   };
 
   // ==========================================
   // GESTIÓN DE ESTADO DE ACCIONES MÓVILES
   // ==========================================
-  function updateMobileActionsState(isSaved = false) {
+  function updateMobileActionsStateLegacy(isSaved = false) {
     if (!dom.mobileDownloadPngBtn || !dom.mobileSaveCatalogBtn) return;
     if (isSaved) {
       dom.mobileDownloadPngBtn.disabled = false;
@@ -293,6 +301,25 @@ document.addEventListener('DOMContentLoaded', () => {
     indicator.style.opacity = '1';
   }
 
+  function updateMobileActionsState() {
+    const visible = state.hasGeneratedQr && dom.designerSection?.classList.contains('active');
+    if (dom.mobileActionsBar) {
+      dom.mobileActionsBar.hidden = !visible;
+      dom.mobileActionsBar.classList.toggle('hidden', !visible);
+    }
+    if (!dom.mobileDownloadPngBtn || !dom.mobileSaveCatalogBtn) return;
+
+    dom.mobileDownloadPngBtn.disabled = !state.hasGeneratedQr;
+    dom.mobileSaveCatalogBtn.classList.add('btn-primary');
+    dom.mobileSaveCatalogBtn.classList.remove('btn-secondary');
+    dom.mobileDownloadPngBtn.classList.add('btn-secondary');
+    dom.mobileDownloadPngBtn.classList.remove('btn-primary');
+    dom.mobileSaveCatalogBtn.innerHTML = `
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+      <span>Guardar QR</span>
+    `;
+  }
+
   function initSlidingGroup(containerId, indicatorId, btnSelector) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -368,6 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dom.mobileActionsBar) {
       dom.mobileActionsBar.classList.toggle('hidden', tabId !== 'designerSection');
     }
+    updateMobileActionsState();
   }
 
   // ==========================================
@@ -453,9 +481,12 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function markAsUnsaved() {
+    state.hasUnsavedChanges = state.hasGeneratedQr;
     dom.downloadOptionsPanel?.classList.remove('active');
     dom.saveToCatalogBtn?.classList.remove('saved');
-    if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = 'Guardar y Generar Código QR';
+    if (dom.saveBtnLabel) {
+      dom.saveBtnLabel.textContent = state.hasGeneratedQr ? 'Guardar Cambios' : 'Guardar y Generar Código QR';
+    }
     updateMobileActionsState(false);
   }
 
@@ -522,13 +553,17 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.isDynamicToggle?.addEventListener('change', (e) => {
       state.isDynamic = e.target.checked;
       if (state.isDynamic) {
+      if (dom.qrModeBadge) {
         dom.qrModeBadge.textContent = 'QR Dinámico';
         dom.qrModeBadge.style.background = 'var(--accent-soft)';
         dom.qrModeBadge.style.color = 'var(--accent)';
+      }
       } else {
+      if (dom.qrModeBadge) {
         dom.qrModeBadge.textContent = 'QR Estático';
         dom.qrModeBadge.style.background = 'var(--badge-neutral-bg)';
         dom.qrModeBadge.style.color = 'var(--text-soft)';
+      }
       }
       markAsUnsaved();
       triggerLivePreview();
@@ -671,8 +706,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     dom.removeLogoBtn?.addEventListener('click', () => {
       state.pendingLogoFile = null;
+      state.previewLogoDataUrl = null;
+      releaseLogoPreviewUrl();
+      releaseCropSourceUrl();
       state.logoPath = null;
-      state.cropSourceDataUrl = null;
       state.cropSourceFile = null;
       state.cropSettings = null;
       updateLogoUI(null);
@@ -760,13 +797,13 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // CONSTRUCCIÓN DEL PAYLOAD PARA LA API
   // ==========================================
-  function buildPayload(format = 'png') {
+  function buildPayload(format = 'png', logoPath = state.logoPath) {
     const cardId = dom.cardIdInput.value.trim() || 'tarjeta_qr';
     const payload = {
       content_type: state.contentType,
       fill_color: state.fillColor,
       back_color: state.backColor,
-      logo_path: state.logoPath || null,
+      logo_path: logoPath || null,
       logo_size_ratio: state.logoSizeRatio,
       border: state.border,
       error_correction: state.errorCorrection,
@@ -808,13 +845,21 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // PREVISUALIZACIÓN EN TIEMPO REAL
   // ==========================================
+  async function getPreviewLogoPath() {
+    if (!state.pendingLogoFile) return state.logoPath || null;
+    if (!state.previewLogoDataUrl) {
+      state.previewLogoDataUrl = await blobToDataUrl(state.pendingLogoFile);
+    }
+    return state.previewLogoDataUrl;
+  }
+
   function triggerLivePreview() {
     clearTimeout(debounceTimer);
     dom.qrLoadingOverlay.classList.add('active');
 
     debounceTimer = setTimeout(async () => {
       try {
-        const payload = buildPayload('png');
+        const payload = buildPayload('png', await getPreviewLogoPath());
         const res = await fetch('/api/qr/preview', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -825,8 +870,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
 
         dom.qrPreviewImg.src = data.preview_url;
+        state.lastPreviewRawContent = data.raw_content || '';
         const userHasInput = Boolean(dom.urlInput.value.trim() || dom.cardIdInput.value.trim() || dom.vcardName.value.trim() || dom.waPhone.value.trim() || dom.wifiSsid.value.trim() || dom.textInput.value.trim());
-        dom.previewTargetUrl.textContent = userHasInput ? data.raw_content : 'https://... (Escribe una URL o contenido)';
+        if (dom.previewTargetUrl) {
+          dom.previewTargetUrl.textContent = userHasInput ? data.raw_content : 'https://... (Escribe una URL o contenido)';
+        }
         dom.previewStatusText.textContent = state.isDynamic ? 'QR Dinámico Listo' : 'QR Estático Listo';
       } catch (err) {
         console.error(err);
@@ -849,12 +897,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target.result;
-      openLogoCropEditor(file, dataUrl, file.name);
-    };
-    reader.readAsDataURL(file);
+    releaseCropSourceUrl();
+    const sourceUrl = URL.createObjectURL(file);
+    state.cropSourceObjectUrl = sourceUrl;
+    openLogoCropEditor(file, sourceUrl, file.name);
     if (e.target && e.target.files) e.target.value = '';
   }
 
@@ -922,9 +968,60 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  function loadImageFromUrl(url) {
+    return new Promise((resolve, reject) => {
+      const image = new Image();
+      image.decoding = 'async';
+      image.onload = () => resolve(image);
+      image.onerror = () => reject(new Error('No se pudo decodificar la imagen'));
+      image.src = url;
+    });
+  }
+
+  function canvasToBlob(canvas, type, quality) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error('El navegador no pudo preparar la imagen'));
+      }, type, quality);
+    });
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error('No se pudo preparar la previsualización'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async function prepareCropImage(url) {
+    const image = await loadImageFromUrl(url);
+    const maxDimension = 2048;
+    const largestSide = Math.max(image.naturalWidth, image.naturalHeight);
+    if (largestSide <= maxDimension) return image;
+
+    const scale = maxDimension / largestSide;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+    const context = canvas.getContext('2d');
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await canvasToBlob(canvas, 'image/png');
+    const resizedUrl = URL.createObjectURL(blob);
+    try {
+      return await loadImageFromUrl(resizedUrl);
+    } finally {
+      URL.revokeObjectURL(resizedUrl);
+    }
+  }
+
   function openLogoCropEditor(file, dataUrl, fileName, savedSettings = null) {
-    const image = new Image();
-    image.onload = () => {
+    const loadToken = ++cropEditor.loadToken;
+    cropEditor.image = null;
+    prepareCropImage(dataUrl).then((image) => {
+      if (loadToken !== cropEditor.loadToken) return;
       cropEditor.image = image;
       cropEditor.baseScale = Math.max(360 / image.naturalWidth, 360 / image.naturalHeight);
       cropEditor.zoom = savedSettings?.zoom || 1;
@@ -937,9 +1034,9 @@ document.addEventListener('DOMContentLoaded', () => {
       dom.logoCropModal.hidden = false;
       document.body.classList.add('crop-modal-open');
       requestAnimationFrame(renderCropEditor);
-    };
-    image.onerror = () => showToast('No se pudo abrir esta imagen para recortarla.', 'error');
-    image.src = dataUrl;
+    }).catch(() => {
+      if (loadToken === cropEditor.loadToken) showToast('No se pudo abrir esta imagen para recortarla.', 'error');
+    });
     cropEditor.sourceFile = file || null;
     cropEditor.sourceDataUrl = dataUrl;
     cropEditor.sourceName = fileName || state.logoFileName || 'logo_recortado.png';
@@ -947,10 +1044,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function closeCropEditor() {
     if (!dom.logoCropModal) return;
+    const sourceUrl = cropEditor.sourceDataUrl;
+    if (!state.cropSourceDataUrl && state.cropSourceObjectUrl === sourceUrl) {
+      releaseCropSourceUrl();
+    }
     dom.logoCropModal.hidden = true;
     document.body.classList.remove('crop-modal-open');
     cropEditor.pointers.clear();
     cropEditor.image = null;
+  }
+
+  function releaseCropSourceUrl() {
+    if (state.cropSourceObjectUrl) {
+      URL.revokeObjectURL(state.cropSourceObjectUrl);
+      state.cropSourceObjectUrl = null;
+    }
+    state.cropSourceDataUrl = null;
+  }
+
+  function releaseLogoPreviewUrl() {
+    if (state.logoPreviewObjectUrl) {
+      URL.revokeObjectURL(state.logoPreviewObjectUrl);
+      state.logoPreviewObjectUrl = null;
+    }
   }
 
   function resetCropEditor() {
@@ -1044,35 +1160,55 @@ document.addEventListener('DOMContentLoaded', () => {
     return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
   }
 
-  function applyCropEditor() {
-    if (!cropEditor.image) return;
+  async function applyCropEditor() {
+    if (!cropEditor.image || cropEditor.isProcessing) return;
+    cropEditor.isProcessing = true;
+    const applyButton = dom.cropApplyBtn;
+    const originalLabel = applyButton?.textContent || 'Aplicar recorte';
+    if (applyButton) {
+      applyButton.disabled = true;
+      applyButton.setAttribute('aria-busy', 'true');
+      applyButton.textContent = 'Procesando…';
+    }
+
     const outputType = cropEditor.sourceFile?.type === 'image/jpeg' || cropEditor.sourceFile?.type === 'image/webp'
       ? cropEditor.sourceFile.type
       : 'image/png';
-    const canvas = document.createElement('canvas');
-    drawCrop(canvas, 720);
-    const dataUrl = canvas.toDataURL(outputType, 0.94);
-    state.logoFileName = cropEditor.sourceName || state.logoFileName || 'logo_recortado.png';
-    state.pendingLogoFile = dataUrlToFile(dataUrl, state.logoFileName, outputType);
-    state.logoPath = dataUrl;
-    state.cropSourceFile = cropEditor.sourceFile;
-    state.cropSourceDataUrl = cropEditor.sourceDataUrl;
-    state.cropSettings = { zoom: cropEditor.zoom, offsetX: cropEditor.offsetX, offsetY: cropEditor.offsetY, rotation: cropEditor.rotation };
-    updateLogoUI(dataUrl, 'Pendiente de guardar', dataUrl, state.logoFileName);
-    closeCropEditor();
-    markAsUnsaved();
-    triggerLivePreview();
-    showToast(`Logo '${state.logoFileName}' recortado y listo`, 'success');
-  }
+    try {
+      const canvas = document.createElement('canvas');
+      drawCrop(canvas, 720);
+      const blob = await canvasToBlob(canvas, outputType, 0.94);
+      const extension = outputType === 'image/jpeg' ? 'jpg' : outputType === 'image/webp' ? 'webp' : 'png';
+      const safeName = String(cropEditor.sourceName || state.logoFileName || 'logo')
+        .replace(/\.[^.]+$/, '');
+      const fileName = `${safeName}_recortado.${extension}`;
+      const previewUrl = URL.createObjectURL(blob);
 
-  function dataUrlToFile(dataUrl, fileName, type) {
-    const parts = dataUrl.split(',');
-    const binary = atob(parts[1]);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
-    const extension = type === 'image/jpeg' ? 'jpg' : type === 'image/webp' ? 'webp' : 'png';
-    const safeName = String(fileName || 'logo').replace(/\.[^.]+$/, '');
-    return new File([bytes], `${safeName}_recortado.${extension}`, { type });
+      releaseLogoPreviewUrl();
+      state.logoFileName = fileName;
+      state.pendingLogoFile = new File([blob], fileName, { type: blob.type || outputType });
+      state.previewLogoDataUrl = null;
+      state.logoPreviewObjectUrl = previewUrl;
+      state.logoPath = previewUrl;
+      state.cropSourceFile = cropEditor.sourceFile;
+      state.cropSourceDataUrl = cropEditor.sourceDataUrl;
+      state.cropSettings = { zoom: cropEditor.zoom, offsetX: cropEditor.offsetX, offsetY: cropEditor.offsetY, rotation: cropEditor.rotation };
+      updateLogoUI(previewUrl, 'Pendiente de guardar', previewUrl, state.logoFileName);
+      closeCropEditor();
+      markAsUnsaved();
+      triggerLivePreview();
+      showToast(`Logo '${state.logoFileName}' recortado y listo`, 'success');
+    } catch (error) {
+      console.error(error);
+      showToast('No se pudo aplicar el recorte. Inténtalo de nuevo.', 'error');
+    } finally {
+      cropEditor.isProcessing = false;
+      if (applyButton) {
+        applyButton.disabled = false;
+        applyButton.removeAttribute('aria-busy');
+        applyButton.textContent = originalLabel;
+      }
+    }
   }
 
   function resolveLogoPreviewUrl(logoPath) {
@@ -1137,7 +1273,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function downloadFile(format) {
     try {
       showToast(`Generando archivo ${format.toUpperCase()} en alta definición...`, 'info');
-      const payload = buildPayload(format);
+      const payload = buildPayload(format, await getPreviewLogoPath());
 
       const res = await fetch('/api/qr/download', {
         method: 'POST',
@@ -1345,6 +1481,8 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.backColorHex.value = back;
 
     state.logoPath = logo || null;
+    state.hasGeneratedQr = true;
+    state.hasUnsavedChanges = false;
     updateLogoUI(state.logoPath);
 
     // Activar panel de descargas al cargar tarjeta existente
@@ -1396,7 +1534,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const payload = buildPayload('png');
-    const targetUrl = payload.data || dom.previewTargetUrl.textContent;
+    const targetUrl = payload.data || state.lastPreviewRawContent || dom.previewTargetUrl?.textContent || '';
     if (!targetUrl || targetUrl.includes('https://...')) {
       showToast('Ingresa una dirección URL o contenido para guardar la tarjeta.', 'error');
       dom.urlInput.focus();
@@ -1419,8 +1557,10 @@ document.addEventListener('DOMContentLoaded', () => {
           if (uploadRes.ok) {
             const uploadData = await uploadRes.json();
             targetLogoPath = uploadData.logo_path;
+            releaseLogoPreviewUrl();
             state.logoPath = targetLogoPath;
             state.pendingLogoFile = null;
+            state.previewLogoDataUrl = null;
             updateLogoUI(targetLogoPath, uploadData.storage, uploadData.url);
           }
         } catch (uploadErr) {
@@ -1452,7 +1592,9 @@ document.addEventListener('DOMContentLoaded', () => {
       dom.downloadOptionsPanel?.classList.add('active');
       dom.saveToCatalogBtn?.classList.add('saved');
       if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = 'Guardar Cambios';
-      updateMobileActionsState(true);
+      state.hasGeneratedQr = true;
+      state.hasUnsavedChanges = false;
+      updateMobileActionsState();
 
       showToast(`¡Tarjeta '${cardId}' guardada con éxito!`, 'success');
       loadCatalog();
@@ -1496,7 +1638,12 @@ document.addEventListener('DOMContentLoaded', () => {
     state.cardId = '';
     state.cardTitle = '';
     state.pendingLogoFile = null;
-    state.cropSourceDataUrl = null;
+    state.previewLogoDataUrl = null;
+    releaseLogoPreviewUrl();
+    releaseCropSourceUrl();
+    state.hasGeneratedQr = false;
+    state.hasUnsavedChanges = false;
+    state.lastPreviewRawContent = '';
     state.cropSourceFile = null;
     state.cropSettings = null;
     state.logoPath = 'img/kobaia.png';

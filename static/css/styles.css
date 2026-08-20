@@ -1896,6 +1896,9 @@ input[type="range"].slider::-webkit-slider-thumb:active, input[type="range"]::-w
 .bottom-tabbar-container, .mobile-actions {
   display: none;
 }
+.mobile-actions[hidden] {
+  display: none !important;
+}
 
 @media (max-width: 768px) {
   .bottom-tabbar-container, .mobile-actions {
@@ -1914,6 +1917,11 @@ input[type="range"].slider::-webkit-slider-thumb:active, input[type="range"]::-w
   }
   .mobile-actions {
     pointer-events: auto;
+    left: 50%;
+    right: auto;
+    bottom: max(12px, env(safe-area-inset-bottom));
+    width: calc(100% - 24px);
+    box-sizing: border-box;
     background: var(--glass-bg-elevated);
     backdrop-filter: var(--glass-filter);
     -webkit-backdrop-filter: var(--glass-filter);
@@ -1923,11 +1931,14 @@ input[type="range"].slider::-webkit-slider-thumb:active, input[type="range"]::-w
     box-shadow: 0 10px 36px rgba(0, 0, 0, 0.22), var(--glass-specular);
     gap: 8px;
     max-width: 460px;
-    margin: 0 auto;
-    width: 100%;
+    margin: 0;
+    transform: translateX(-50%);
+    padding-bottom: calc(6px + env(safe-area-inset-bottom));
   }
   .mobile-actions .btn {
     flex: 1;
+    min-width: 0;
+    width: 0;
     padding: 10px 12px;
     font-size: 13px;
     font-weight: 600;
