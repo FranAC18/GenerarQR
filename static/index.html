@@ -463,7 +463,6 @@
         <div class="catalog-header card glass">
           <div class="catalog-header-left">
             <h2>Catálogo de Tarjetas Digitales</h2>
-            <p>Gestiona todas las tarjetas guardadas en la base de datos, supervisa sus escaneos y descárgalas individualmente o en ZIP.</p>
           </div>
           <div class="catalog-header-right">
             <button id="exportAllZipBtn" class="btn btn-primary">
@@ -508,14 +507,14 @@
   </main>
 
   <!-- Barra de acciones móvil (sticky bottom) -->
-  <div id="mobileActionsBar" class="mobile-actions hidden" aria-label="Acciones rápidas en móvil">
-    <button type="button" class="btn btn-primary" id="mobileDownloadPngBtn">
+  <div id="mobileActionsBar" class="mobile-actions" aria-label="Acciones rápidas en móvil">
+    <button type="button" class="btn btn-primary" id="mobileSaveCatalogBtn">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+      <span>Guardar QR</span>
+    </button>
+    <button type="button" class="btn btn-secondary" id="mobileDownloadPngBtn">
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
       <span>Descargar PNG</span>
-    </button>
-    <button type="button" class="btn btn-secondary" id="mobileSaveCatalogBtn">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
-      <span>Guardar</span>
     </button>
   </div>
 
@@ -530,7 +529,7 @@
     </div>
   </footer>
 
-  <script src="/static/js/app.js"></script>
-  <script src="/static/js/app-ui.js"></script>
+  <script src="/static/js/app.js?v=v3_liquid_glass"></script>
+  <script src="/static/js/app-ui.js?v=v3_liquid_glass"></script>
 </body>
 </html>

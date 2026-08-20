@@ -118,6 +118,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let debounceTimer = null;
 
+  // ==========================================
+  // GESTIÓN DE ESTADO DE ACCIONES MÓVILES
+  // ==========================================
+  function updateMobileActionsState(isSaved = false) {
+    if (!dom.mobileDownloadPngBtn || !dom.mobileSaveCatalogBtn) return;
+    if (isSaved) {
+      dom.mobileDownloadPngBtn.disabled = false;
+      dom.mobileDownloadPngBtn.classList.remove('btn-secondary');
+      dom.mobileDownloadPngBtn.classList.add('btn-primary');
+      dom.mobileSaveCatalogBtn.classList.remove('btn-primary');
+      dom.mobileSaveCatalogBtn.classList.add('btn-secondary');
+      dom.mobileSaveCatalogBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <span>Actualizar</span>
+      `;
+    } else {
+      dom.mobileSaveCatalogBtn.classList.remove('btn-secondary');
+      dom.mobileSaveCatalogBtn.classList.add('btn-primary');
+      dom.mobileSaveCatalogBtn.innerHTML = `
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <span>Guardar QR</span>
+      `;
+      dom.mobileDownloadPngBtn.classList.remove('btn-primary');
+      dom.mobileDownloadPngBtn.classList.add('btn-secondary');
+    }
+  }
+
   // Iconos SVG para tema
   const sunIcon = `<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>`;
   const moonIcon = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>`;
@@ -224,8 +251,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const cRect = container.getBoundingClientRect();
       const bRect = activeBtn.getBoundingClientRect();
 
-      indicator.style.transform = `translateX(${bRect.left - cRect.left}px)`;
+      indicator.style.transform = `translate(${bRect.left - cRect.left}px, ${bRect.top - cRect.top}px)`;
       indicator.style.width = `${bRect.width}px`;
+      indicator.style.height = `${bRect.height}px`;
       indicator.style.opacity = '1';
     }
 
@@ -369,6 +397,40 @@ document.addEventListener('DOMContentLoaded', () => {
     window.addEventListener('resize', scheduleGlassMap, { passive: true });
   }
 
+  function markAsUnsaved() {
+    dom.downloadOptionsPanel?.classList.remove('active');
+    dom.saveToCatalogBtn?.classList.remove('saved');
+    if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = 'Guardar y Generar Código QR';
+    updateMobileActionsState(false);
+  }
+
+  function selectContentType(type, markUnsaved = true) {
+    state.contentType = type;
+    dom.typeBtns.forEach(b => {
+      b.classList.toggle('active', b.dataset.type === type);
+    });
+    dom.typeForms.forEach(f => f.classList.remove('active'));
+    const targetForm = document.getElementById(`formType${capitalize(type)}`);
+    if (targetForm) targetForm.classList.add('active');
+
+    const activeBtn = Array.from(dom.typeBtns).find(b => b.dataset.type === type);
+    const container = document.getElementById('contentTypeSelector');
+    const indicator = document.getElementById('contentTypeIndicator');
+    if (activeBtn && container && indicator) {
+      const cRect = container.getBoundingClientRect();
+      const bRect = activeBtn.getBoundingClientRect();
+      indicator.style.transform = `translate(${bRect.left - cRect.left}px, ${bRect.top - cRect.top}px)`;
+      indicator.style.width = `${bRect.width}px`;
+      indicator.style.height = `${bRect.height}px`;
+      indicator.style.opacity = '1';
+    }
+
+    if (markUnsaved) {
+      markAsUnsaved();
+    }
+    triggerLivePreview();
+  }
+
   // ==========================================
   // CONFIGURACIÓN DE EVENTOS
   // ==========================================
@@ -397,12 +459,6 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.mobileDownloadPngBtn?.addEventListener('click', () => downloadFile('png'));
     dom.mobileSaveCatalogBtn?.addEventListener('click', saveCurrentCardToCatalog);
 
-    function markAsUnsaved() {
-      dom.downloadOptionsPanel?.classList.remove('active');
-      dom.saveToCatalogBtn?.classList.remove('saved');
-      if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = 'Guardar y Generar Código QR';
-    }
-
     // Dynamic QR Toggle
     dom.isDynamicToggle?.addEventListener('change', (e) => {
       state.isDynamic = e.target.checked;
@@ -428,19 +484,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Content Type Selector
+    // Selector de Tipo de Contenido
     dom.typeBtns.forEach(btn => {
       btn.addEventListener('click', () => {
-        dom.typeBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        state.contentType = btn.dataset.type;
-
-        dom.typeForms.forEach(f => f.classList.remove('active'));
-        const targetForm = document.getElementById(`formType${capitalize(state.contentType)}`);
-        if (targetForm) targetForm.classList.add('active');
-
-        markAsUnsaved();
-        triggerLivePreview();
+        selectContentType(btn.dataset.type, true);
       });
     });
 
@@ -960,9 +1007,9 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.isDynamicToggle.checked = isDyn;
     state.isDynamic = isDyn;
 
-    // Switch to URL type
-    const urlBtn = document.querySelector('.type-btn[data-type="url"]');
-    if (urlBtn) urlBtn.click();
+    // Switch to content type
+    const cardContentType = typeof cardData === 'object' && cardData.content_type ? cardData.content_type : 'url';
+    selectContentType(cardContentType, false);
 
     state.fillColor = fill;
     state.backColor = back;
@@ -978,6 +1025,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.downloadOptionsPanel?.classList.add('active');
     dom.saveToCatalogBtn?.classList.add('saved');
     if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = 'Actualizar Tarjeta';
+    updateMobileActionsState(true);
 
     switchTab('designerSection');
     triggerLivePreview();
@@ -1078,6 +1126,7 @@ document.addEventListener('DOMContentLoaded', () => {
       dom.downloadOptionsPanel?.classList.add('active');
       dom.saveToCatalogBtn?.classList.add('saved');
       if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = 'Guardar Cambios';
+      updateMobileActionsState(true);
 
       showToast(`¡Tarjeta '${cardId}' guardada con éxito!`, 'success');
       loadCatalog();
@@ -1127,6 +1176,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.downloadOptionsPanel?.classList.remove('active');
     dom.saveToCatalogBtn?.classList.remove('saved');
     if (dom.saveBtnLabel) dom.saveBtnLabel.textContent = 'Guardar y Generar Código QR';
+    updateMobileActionsState(false);
 
     triggerLivePreview();
   }
