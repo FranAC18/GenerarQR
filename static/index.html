@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/static/css/styles.css">
+  <link rel="stylesheet" href="/static/css/styles.css?v=v7_crop_surface">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230071e3'><rect x='2' y='2' width='8' height='8' rx='2'/><rect x='14' y='2' width='8' height='8' rx='2'/><rect x='2' y='14' width='8' height='8' rx='2'/><rect x='14' y='14' width='4' height='4'/><rect x='18' y='18' width='4' height='4'/></svg>">
 </head>
 <body>
@@ -131,7 +131,35 @@
         <!-- PANEL IZQUIERDO: CONFIGURADOR -->
         <div class="config-panel card glass">
 
+          <div class="config-panel-heading">
+            <div class="config-panel-title">
+              <span class="config-panel-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.64 5.64l2.12 2.12M16.24 16.24l2.12 2.12M5.64 18.36l2.12-2.12M16.24 7.76l2.12-2.12"/><circle cx="12" cy="12" r="3"/></svg>
+              </span>
+              <div>
+                <h2>Configuración del QR</h2>
+              </div>
+            </div>
+            <span class="config-panel-hint">Elige una sección para editar</span>
+          </div>
+
+          <nav class="config-section-nav" aria-label="Secciones de configuración del QR">
+            <button type="button" class="config-section-tab is-active" data-config-target="contentConfig" aria-expanded="true">
+              <span class="config-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 0 20M2 12a15.3 15.3 0 0 1 20 0"/></svg></span>
+              <span class="config-tab-copy"><strong>Contenido</strong><small>URL, contacto, WhatsApp y más</small></span>
+            </button>
+            <button type="button" class="config-section-tab" data-config-target="logoConfig" aria-expanded="false">
+              <span class="config-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg></span>
+              <span class="config-tab-copy"><strong>Logotipo</strong><small>Sube y ajusta tu logo</small></span>
+            </button>
+            <button type="button" class="config-section-tab" data-config-target="styleConfig" aria-expanded="false">
+              <span class="config-tab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a7 7 0 0 0 0 14 7 7 0 0 0 0-14z"/></svg></span>
+              <span class="config-tab-copy"><strong>Estilo</strong><small>Color, contraste y margen</small></span>
+            </button>
+          </nav>
+
           <!-- Selector de Tipo de Contenido (Segmented Slide) -->
+          <div class="config-group is-active" id="contentConfig" data-config-panel="contentConfig">
           <div class="form-group">
             <div class="generator-heading">
               <span class="section-label" id="contentTypeLabel">Tipo de Contenido</span>
@@ -159,21 +187,6 @@
                 <span>Texto</span>
               </button>
             </div>
-          </div>
-
-          <!-- MODO QR DINÁMICO TOGGLE (Apple Card Switch) -->
-          <div class="dynamic-toggle-box">
-            <div class="dynamic-toggle-info">
-              <div class="dynamic-toggle-title">
-                <span>Código QR Dinámico (Redirigible)</span>
-                <span class="badge badge-rec"><span class="status-dot" style="width:5px;height:5px;background:var(--accent);"></span>Recomendado</span>
-              </div>
-              <p class="dynamic-toggle-desc">Apunta a tu dominio y redirige al destino. Podrás cambiar el contenido en cualquier momento sin reimprimir el QR físico.</p>
-            </div>
-            <label class="switch" aria-label="Alternar modo QR Dinámico">
-              <input type="checkbox" id="isDynamicToggle" checked>
-              <span class="switch-track"></span>
-            </label>
           </div>
 
           <!-- Campos Dinámicos según tipo -->
@@ -280,9 +293,25 @@
               </div>
             </div>
           </div>
+          <!-- MODO QR DINÁMICO TOGGLE (Apple Card Switch) -->
+          <div class="dynamic-toggle-box">
+            <div class="dynamic-toggle-info">
+              <div class="dynamic-toggle-title">
+                <span>Código QR Dinámico (Redirigible)</span>
+                <span class="badge badge-rec"><span class="status-dot" style="width:5px;height:5px;background:var(--accent);"></span>Recomendado</span>
+              </div>
+              <p class="dynamic-toggle-desc">Apunta a tu dominio y redirige al destino. Podrás cambiar el contenido en cualquier momento sin reimprimir el QR físico.</p>
+            </div>
+            <label class="switch" aria-label="Alternar modo QR Dinámico">
+              <input type="checkbox" id="isDynamicToggle" checked>
+              <span class="switch-track"></span>
+            </label>
+          </div>
+
+          </div>
 
           <!-- SECCIÓN LOGOTIPO (Acordeón Glass) -->
-          <div class="accordion-section">
+          <div class="accordion-section config-group" id="logoConfig" data-config-panel="logoConfig">
             <div class="accordion-header" id="logoHeaderToggle">
               <div class="acc-title">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
@@ -300,7 +329,7 @@
                 </div>
                 <div>
                   <p class="drop-text dz-title" id="logoDropText">Arrastra tu logotipo aquí o <strong>haz clic para seleccionar</strong></p>
-                  <p class="drop-hint dz-hint">Compatible con PNG, JPG y SVG (guardado directo en Supabase)</p>
+                  <p class="drop-hint dz-hint">Compatible con PNG, JPG y SVG</p>
                 </div>
               </div>
 
@@ -313,6 +342,9 @@
                   <span class="logo-name" id="logoNameLabel">kobaia.png</span>
                   <span class="logo-meta" id="logoStorageSource">Logotipo oficial Kobaia</span>
                 </div>
+                <button type="button" class="btn btn-ghost btn-sm logo-edit-btn" id="editLogoCropBtn" title="Editar recorte del logotipo">
+                  <span>Editar</span>
+                </button>
                 <button type="button" class="btn btn-ghost btn-sm" id="removeLogoBtn" title="Quitar logotipo">
                   <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                   <span>Quitar</span>
@@ -322,7 +354,7 @@
           </div>
 
           <!-- SECCIÓN PERSONALIZACIÓN DE ESTILOS -->
-          <div class="accordion-section">
+          <div class="accordion-section config-group" id="styleConfig" data-config-panel="styleConfig">
             <div class="accordion-header">
               <div class="acc-title">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a7 7 0 0 0 0 14 7 7 0 0 0 0-14z"></path></svg>
@@ -351,7 +383,7 @@
 
               <!-- Paletas rápidas -->
               <div class="presets-row">
-                <span class="sub-label">Combinaciones recomendadas Apple:</span>
+                <span class="sub-label">Combinaciones recomendadas:</span>
                 <div class="presets-pills">
                   <button type="button" class="preset-pill" data-fill="#000000" data-back="#FFFFFF">Clásico (B&N)</button>
                   <button type="button" class="preset-pill" data-fill="#0071e3" data-back="#FFFFFF">Azul Cupertino</button>
@@ -486,13 +518,26 @@
 
           <div class="catalog-sort">
             <label for="catalogSortSelect">Ordenar por</label>
-            <select id="catalogSortSelect" class="form-control">
+            <div class="catalog-sort-control">
+            <button type="button" id="catalogSortTrigger" class="catalog-sort-trigger" aria-haspopup="listbox" aria-expanded="false">
+              <span id="catalogSortValue">Más recientes</span>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div id="catalogSortMenu" class="catalog-sort-menu" role="listbox" aria-labelledby="catalogSortTrigger" hidden>
+              <button type="button" role="option" aria-selected="true" data-value="recent">Más recientes</button>
+              <button type="button" role="option" aria-selected="false" data-value="title">Nombre (A-Z)</button>
+              <button type="button" role="option" aria-selected="false" data-value="scans">Más escaneos</button>
+              <button type="button" role="option" aria-selected="false" data-value="static">Estáticas primero</button>
+              <button type="button" role="option" aria-selected="false" data-value="dynamic">Dinámicas primero</button>
+            </div>
+            <select id="catalogSortSelect" class="catalog-sort-native" tabindex="-1" aria-hidden="true">
               <option value="recent">Más recientes</option>
               <option value="title">Nombre (A-Z)</option>
               <option value="scans">Más escaneos</option>
               <option value="static">Estáticas primero</option>
               <option value="dynamic">Dinámicas primero</option>
             </select>
+            </div>
           </div>
         </div>
 
@@ -518,10 +563,59 @@
     </button>
   </div>
 
+  <!-- Editor de recorte 1:1 del logotipo -->
+  <div id="logoCropModal" class="logo-crop-modal" role="dialog" aria-modal="true" aria-labelledby="cropModalTitle" hidden>
+    <div class="logo-crop-dialog">
+      <header class="logo-crop-header">
+        <div>
+          <span class="eyebrow">Editor de imagen</span>
+          <h2 id="cropModalTitle">Recortar logotipo</h2>
+        </div>
+        <button type="button" class="crop-close-btn" id="cropCloseBtn" aria-label="Cerrar editor">×</button>
+      </header>
+
+      <div class="logo-crop-content">
+        <div class="crop-editor-column">
+          <div class="crop-viewport" id="cropViewport" aria-label="Área cuadrada de recorte">
+            <canvas id="cropCanvas"></canvas>
+            <div class="crop-frame" aria-hidden="true">
+              <span class="crop-grid-line vertical one"></span><span class="crop-grid-line vertical two"></span>
+              <span class="crop-grid-line horizontal one"></span><span class="crop-grid-line horizontal two"></span>
+            </div>
+          </div>
+          <p class="crop-help">Arrastra para mover · usa la rueda o pellizca para ampliar</p>
+          <div class="crop-tool-row">
+            <button type="button" class="crop-tool-btn" id="cropRotateBtn" aria-label="Girar imagen 90 grados">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+              <span>Girar 90°</span>
+            </button>
+          </div>
+          <div class="crop-zoom-control">
+            <button type="button" id="cropZoomOutBtn" class="crop-round-btn" aria-label="Reducir zoom">−</button>
+            <input type="range" id="cropZoomSlider" min="1" max="3" step="0.01" value="1" aria-label="Nivel de zoom del recorte">
+            <button type="button" id="cropZoomInBtn" class="crop-round-btn" aria-label="Aumentar zoom">+</button>
+          </div>
+          <button type="button" class="crop-reset-btn" id="cropResetBtn">↺ <span>Restablecer encuadre</span></button>
+        </div>
+
+        <aside class="crop-result-column">
+          <span class="crop-result-label">Resultado</span>
+          <div class="crop-result-preview"><canvas id="cropPreviewCanvas" width="96" height="96"></canvas></div>
+          <p>El recorte se mantendrá cuadrado para una mejor lectura del QR.</p>
+        </aside>
+      </div>
+
+      <footer class="logo-crop-footer">
+        <button type="button" class="btn btn-ghost" id="cropCancelBtn">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="cropApplyBtn">Aplicar recorte</button>
+      </footer>
+    </div>
+  </div>
+
   <!-- Footer -->
   <footer class="app-footer">
     <div class="footer-content">
-      <p><strong>Kobaia QR Studio</strong> • Sistema de Diseño Apple Subtle Glass &amp; Liquid Glass</p>
+      <p><strong>Kobaia QR Studio</strong></p>
       <p class="footer-links" style="margin-top: 6px;">
         <a href="https://www.instagram.com/kobaia.dev/" target="_blank" rel="noopener">Kobaia Dev</a> •
         <a href="https://github.com/FranAC18/GenerarQR" target="_blank" rel="noopener">GitHub Repositorio</a>
@@ -529,7 +623,7 @@
     </div>
   </footer>
 
-  <script src="/static/js/app.js?v=v3_liquid_glass"></script>
-  <script src="/static/js/app-ui.js?v=v3_liquid_glass"></script>
+  <script src="/static/js/app.js?v=v6_crop_controls"></script>
+  <script src="/static/js/app-ui.js?v=v6_crop_controls"></script>
 </body>
 </html>

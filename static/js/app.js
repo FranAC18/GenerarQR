@@ -18,6 +18,11 @@ document.addEventListener('DOMContentLoaded', () => {
     isDynamic: true,
     cachedTarjetas: {},
     availableLogos: [],
+    logoFileName: '',
+    pendingLogoFile: null,
+    cropSourceDataUrl: null,
+    cropSourceFile: null,
+    cropSettings: null,
     systemStatus: { mode: 'local', connected: false }
   };
 
@@ -70,8 +75,22 @@ document.addEventListener('DOMContentLoaded', () => {
     logoThumbImg: document.getElementById('logoThumbImg'),
     logoNameLabel: document.getElementById('logoNameLabel'),
     logoStorageSource: document.getElementById('logoStorageSource'),
+    editLogoCropBtn: document.getElementById('editLogoCropBtn'),
     removeLogoBtn: document.getElementById('removeLogoBtn'),
     logoStatusBadge: document.getElementById('logoStatusBadge'),
+
+    // Editor de recorte
+    logoCropModal: document.getElementById('logoCropModal'),
+    cropCanvas: document.getElementById('cropCanvas'),
+    cropPreviewCanvas: document.getElementById('cropPreviewCanvas'),
+    cropRotateBtn: document.getElementById('cropRotateBtn'),
+    cropZoomSlider: document.getElementById('cropZoomSlider'),
+    cropZoomOutBtn: document.getElementById('cropZoomOutBtn'),
+    cropZoomInBtn: document.getElementById('cropZoomInBtn'),
+    cropResetBtn: document.getElementById('cropResetBtn'),
+    cropCancelBtn: document.getElementById('cropCancelBtn'),
+    cropCloseBtn: document.getElementById('cropCloseBtn'),
+    cropApplyBtn: document.getElementById('cropApplyBtn'),
 
     // Estilos y colores
     fillColorPicker: document.getElementById('fillColorPicker'),
@@ -113,10 +132,26 @@ document.addEventListener('DOMContentLoaded', () => {
     mobileSaveCatalogBtn: document.getElementById('mobileSaveCatalogBtn'),
 
     // Acordeones
-    accordionHeaders: document.querySelectorAll('.accordion-header')
+    accordionHeaders: document.querySelectorAll('.accordion-header'),
+    configSectionTabs: document.querySelectorAll('.config-section-tab'),
+    configGroups: document.querySelectorAll('[data-config-panel]')
   };
 
   let debounceTimer = null;
+  const cropEditor = {
+    image: null,
+    zoom: 1,
+    offsetX: 0,
+    offsetY: 0,
+    baseScale: 1,
+    pointers: new Map(),
+    pinchStartDistance: 0,
+    pinchStartZoom: 1,
+    rotation: 0,
+    sourceFile: null,
+    sourceDataUrl: null,
+    sourceName: ''
+  };
 
   // ==========================================
   // GESTIÓN DE ESTADO DE ACCIONES MÓVILES
@@ -240,6 +275,24 @@ document.addEventListener('DOMContentLoaded', () => {
   // ==========================================
   // MOTOR DE PÍLDORAS DESLIZANTES (SLIDING PILL)
   // ==========================================
+  function positionContentTypePill(container, indicator, buttons, activeBtn) {
+    if (!container || !indicator || !activeBtn || !buttons.length) return;
+
+    const styles = getComputedStyle(container);
+    const paddingLeft = parseFloat(styles.paddingLeft) || 0;
+    const paddingRight = parseFloat(styles.paddingRight) || 0;
+    const gap = parseFloat(styles.columnGap || styles.gap) || 0;
+    const contentWidth = container.clientWidth - paddingLeft - paddingRight;
+    const segmentWidth = (contentWidth - (gap * (buttons.length - 1))) / buttons.length;
+    const activeIndex = buttons.indexOf(activeBtn);
+    const x = paddingLeft + activeIndex * (segmentWidth + gap);
+
+    indicator.style.transform = `translate(${x}px, ${activeBtn.offsetTop}px)`;
+    indicator.style.width = `${segmentWidth}px`;
+    indicator.style.height = `${activeBtn.offsetHeight}px`;
+    indicator.style.opacity = '1';
+  }
+
   function initSlidingGroup(containerId, indicatorId, btnSelector) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -248,12 +301,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updatePill(activeBtn) {
       if (!activeBtn || !indicator) return;
-      const cRect = container.getBoundingClientRect();
-      const bRect = activeBtn.getBoundingClientRect();
+      if (containerId === 'contentTypeSelector') {
+        positionContentTypePill(container, indicator, Array.from(buttons), activeBtn);
+        return;
+      }
 
-      indicator.style.transform = `translate(${bRect.left - cRect.left}px, ${bRect.top - cRect.top}px)`;
-      indicator.style.width = `${bRect.width}px`;
-      indicator.style.height = `${bRect.height}px`;
+      indicator.style.transform = `translate(${activeBtn.offsetLeft}px, ${activeBtn.offsetTop}px)`;
+      indicator.style.width = `${activeBtn.offsetWidth}px`;
+      indicator.style.height = `${activeBtn.offsetHeight}px`;
       indicator.style.opacity = '1';
     }
 
@@ -417,12 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('contentTypeSelector');
     const indicator = document.getElementById('contentTypeIndicator');
     if (activeBtn && container && indicator) {
-      const cRect = container.getBoundingClientRect();
-      const bRect = activeBtn.getBoundingClientRect();
-      indicator.style.transform = `translate(${bRect.left - cRect.left}px, ${bRect.top - cRect.top}px)`;
-      indicator.style.width = `${bRect.width}px`;
-      indicator.style.height = `${bRect.height}px`;
-      indicator.style.opacity = '1';
+      positionContentTypePill(container, indicator, Array.from(dom.typeBtns), activeBtn);
     }
 
     if (markUnsaved) {
@@ -444,6 +494,15 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.newCardBtn?.addEventListener('click', () => {
       resetToDefaultCard();
       switchTab('designerSection');
+    });
+
+    // Navegación compacta de configuración en móvil. Los grupos existentes
+    // se reutilizan para no duplicar controles ni lógica de generación.
+    dom.configSectionTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const target = tab.dataset.configTarget;
+        setActiveConfigSection(target);
+      });
     });
 
     // Acordeones colapsables
@@ -587,6 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Drag & Drop / Selección de Logo
     dom.logoDropZone?.addEventListener('click', () => dom.logoFileInput.click());
     dom.logoFileInput?.addEventListener('change', handleLogoFileSelect);
+    setupCropEditorListeners();
 
     ['dragenter', 'dragover'].forEach(eventName => {
       dom.logoDropZone?.addEventListener(eventName, (e) => {
@@ -612,6 +672,9 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.removeLogoBtn?.addEventListener('click', () => {
       state.pendingLogoFile = null;
       state.logoPath = null;
+      state.cropSourceDataUrl = null;
+      state.cropSourceFile = null;
+      state.cropSettings = null;
       updateLogoUI(null);
       markAsUnsaved();
       triggerLivePreview();
@@ -643,6 +706,55 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Buscador en Catálogo
     dom.cardsSearchInput?.addEventListener('input', filterCatalogCards);
+
+    // Selector de orden con menú glass personalizado
+    const sortTrigger = document.getElementById('catalogSortTrigger');
+    const sortMenu = document.getElementById('catalogSortMenu');
+    const sortSelect = document.getElementById('catalogSortSelect');
+    const sortValue = document.getElementById('catalogSortValue');
+    sortTrigger?.addEventListener('click', () => {
+      const isOpen = sortTrigger.getAttribute('aria-expanded') === 'true';
+      sortTrigger.setAttribute('aria-expanded', String(!isOpen));
+      if (sortMenu) sortMenu.hidden = isOpen;
+    });
+    sortMenu?.querySelectorAll('[data-value]').forEach(option => {
+      option.addEventListener('click', () => {
+        const value = option.dataset.value;
+        if (sortSelect) {
+          sortSelect.value = value;
+          sortSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (sortValue) sortValue.textContent = option.textContent.trim();
+        sortMenu.querySelectorAll('[data-value]').forEach(item => {
+          item.setAttribute('aria-selected', String(item === option));
+        });
+        sortTrigger?.setAttribute('aria-expanded', 'false');
+        sortMenu.hidden = true;
+      });
+    });
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.catalog-sort-control')) {
+        sortTrigger?.setAttribute('aria-expanded', 'false');
+        if (sortMenu) sortMenu.hidden = true;
+      }
+    });
+  }
+
+  function setActiveConfigSection(target) {
+    dom.configSectionTabs.forEach(tab => {
+      const active = tab.dataset.configTarget === target;
+      tab.classList.toggle('is-active', active);
+      tab.setAttribute('aria-expanded', String(active));
+    });
+
+    dom.configGroups.forEach(group => {
+      const active = group.dataset.configPanel === target;
+      group.classList.toggle('is-active', active);
+      if (active) {
+        group.classList.remove('collapsed');
+        group.querySelector('.accordion-header')?.setAttribute('aria-expanded', 'true');
+      }
+    });
   }
 
   // ==========================================
@@ -740,15 +852,227 @@ document.addEventListener('DOMContentLoaded', () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const dataUrl = event.target.result;
-      state.pendingLogoFile = file;
-      state.logoPath = dataUrl;
-      state.logoFileName = file.name;
-
-      updateLogoUI(dataUrl, 'Pendiente de guardar', dataUrl, file.name);
-      triggerLivePreview();
-      showToast(`Logo '${file.name}' listo para la vista previa`, 'info');
+      openLogoCropEditor(file, dataUrl, file.name);
     };
     reader.readAsDataURL(file);
+    if (e.target && e.target.files) e.target.value = '';
+  }
+
+  function setupCropEditorListeners() {
+    const canvas = dom.cropCanvas;
+    if (!canvas) return;
+
+    dom.cropZoomSlider?.addEventListener('input', (event) => {
+      setCropZoom(Number(event.target.value));
+    });
+    dom.cropRotateBtn?.addEventListener('click', rotateCropEditor);
+    dom.cropZoomOutBtn?.addEventListener('click', () => setCropZoom(cropEditor.zoom - 0.1));
+    dom.cropZoomInBtn?.addEventListener('click', () => setCropZoom(cropEditor.zoom + 0.1));
+    dom.cropResetBtn?.addEventListener('click', resetCropEditor);
+    dom.cropCancelBtn?.addEventListener('click', closeCropEditor);
+    dom.cropCloseBtn?.addEventListener('click', closeCropEditor);
+    dom.cropApplyBtn?.addEventListener('click', applyCropEditor);
+    dom.editLogoCropBtn?.addEventListener('click', () => {
+      if (!state.cropSourceDataUrl) {
+        showToast('Carga primero una imagen para editar su recorte.', 'info');
+        return;
+      }
+      openLogoCropEditor(state.cropSourceFile, state.cropSourceDataUrl, state.logoFileName, state.cropSettings);
+    });
+
+    canvas.addEventListener('pointerdown', (event) => {
+      canvas.setPointerCapture?.(event.pointerId);
+      cropEditor.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (cropEditor.pointers.size === 2) {
+        cropEditor.pinchStartDistance = getPointerDistance();
+        cropEditor.pinchStartZoom = cropEditor.zoom;
+      }
+      canvas.classList.add('is-dragging');
+    });
+    canvas.addEventListener('pointermove', (event) => {
+      const previous = cropEditor.pointers.get(event.pointerId);
+      if (!previous) return;
+      cropEditor.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      if (cropEditor.pointers.size >= 2) {
+        const distance = getPointerDistance();
+        if (cropEditor.pinchStartDistance > 0) {
+          setCropZoom(cropEditor.pinchStartZoom * (distance / cropEditor.pinchStartDistance), false);
+        }
+      } else {
+        cropEditor.offsetX += event.clientX - previous.x;
+        cropEditor.offsetY += event.clientY - previous.y;
+        clampCropOffset();
+        renderCropEditor();
+      }
+    });
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => {
+      canvas.addEventListener(type, (event) => {
+        cropEditor.pointers.delete(event.pointerId);
+        if (cropEditor.pointers.size < 2) cropEditor.pinchStartDistance = 0;
+        if (!cropEditor.pointers.size) canvas.classList.remove('is-dragging');
+      });
+    });
+    canvas.addEventListener('wheel', (event) => {
+      event.preventDefault();
+      setCropZoom(cropEditor.zoom + (event.deltaY < 0 ? 0.08 : -0.08));
+    }, { passive: false });
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && dom.logoCropModal && !dom.logoCropModal.hidden) closeCropEditor();
+    });
+  }
+
+  function openLogoCropEditor(file, dataUrl, fileName, savedSettings = null) {
+    const image = new Image();
+    image.onload = () => {
+      cropEditor.image = image;
+      cropEditor.baseScale = Math.max(360 / image.naturalWidth, 360 / image.naturalHeight);
+      cropEditor.zoom = savedSettings?.zoom || 1;
+      cropEditor.offsetX = savedSettings?.offsetX || 0;
+      cropEditor.offsetY = savedSettings?.offsetY || 0;
+      cropEditor.rotation = savedSettings?.rotation || 0;
+      updateCropBaseScale();
+      clampCropOffset();
+      if (dom.cropZoomSlider) dom.cropZoomSlider.value = cropEditor.zoom;
+      dom.logoCropModal.hidden = false;
+      document.body.classList.add('crop-modal-open');
+      requestAnimationFrame(renderCropEditor);
+    };
+    image.onerror = () => showToast('No se pudo abrir esta imagen para recortarla.', 'error');
+    image.src = dataUrl;
+    cropEditor.sourceFile = file || null;
+    cropEditor.sourceDataUrl = dataUrl;
+    cropEditor.sourceName = fileName || state.logoFileName || 'logo_recortado.png';
+  }
+
+  function closeCropEditor() {
+    if (!dom.logoCropModal) return;
+    dom.logoCropModal.hidden = true;
+    document.body.classList.remove('crop-modal-open');
+    cropEditor.pointers.clear();
+    cropEditor.image = null;
+  }
+
+  function resetCropEditor() {
+    cropEditor.zoom = 1;
+    cropEditor.offsetX = 0;
+    cropEditor.offsetY = 0;
+    cropEditor.rotation = 0;
+    updateCropBaseScale();
+    if (dom.cropZoomSlider) dom.cropZoomSlider.value = '1';
+    renderCropEditor();
+  }
+
+  function rotateCropEditor() {
+    cropEditor.rotation = (cropEditor.rotation + (Math.PI / 2)) % (Math.PI * 2);
+    cropEditor.offsetX = 0;
+    cropEditor.offsetY = 0;
+    updateCropBaseScale();
+    clampCropOffset();
+    renderCropEditor();
+  }
+
+  function setCropZoom(value, resetPosition = false) {
+    cropEditor.zoom = Math.min(3, Math.max(1, value));
+    if (resetPosition) {
+      cropEditor.offsetX = 0;
+      cropEditor.offsetY = 0;
+    }
+    clampCropOffset();
+    if (dom.cropZoomSlider) dom.cropZoomSlider.value = cropEditor.zoom;
+    renderCropEditor();
+  }
+
+  function clampCropOffset() {
+    if (!cropEditor.image) return;
+    const size = 360;
+    const dimensions = getOrientedDimensions();
+    const width = dimensions.width * cropEditor.baseScale * cropEditor.zoom;
+    const height = dimensions.height * cropEditor.baseScale * cropEditor.zoom;
+    // El offset se aplica sobre la imagen ya centrada. Por eso el límite
+    // correcto es simétrico: permite desplazar tanto hacia arriba como abajo.
+    const maxOffsetX = Math.max(0, (width - size) / 2);
+    const maxOffsetY = Math.max(0, (height - size) / 2);
+    cropEditor.offsetX = Math.max(-maxOffsetX, Math.min(maxOffsetX, cropEditor.offsetX));
+    cropEditor.offsetY = Math.max(-maxOffsetY, Math.min(maxOffsetY, cropEditor.offsetY));
+  }
+
+  function getOrientedDimensions() {
+    const quarterTurns = Math.round(cropEditor.rotation / (Math.PI / 2)) % 2;
+    return quarterTurns
+      ? { width: cropEditor.image.naturalHeight, height: cropEditor.image.naturalWidth }
+      : { width: cropEditor.image.naturalWidth, height: cropEditor.image.naturalHeight };
+  }
+
+  function updateCropBaseScale() {
+    if (!cropEditor.image) return;
+    const dimensions = getOrientedDimensions();
+    cropEditor.baseScale = Math.max(360 / dimensions.width, 360 / dimensions.height);
+  }
+
+  function drawCrop(canvas, size) {
+    if (!canvas || !cropEditor.image) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(size * dpr);
+    canvas.height = Math.round(size * dpr);
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, size, size);
+    const scale = cropEditor.baseScale * cropEditor.zoom * (size / 360);
+    const offsetScale = size / 360;
+    ctx.save();
+    ctx.translate(size / 2 + cropEditor.offsetX * offsetScale, size / 2 + cropEditor.offsetY * offsetScale);
+    ctx.rotate(cropEditor.rotation);
+    ctx.drawImage(
+      cropEditor.image,
+      -(cropEditor.image.naturalWidth * scale) / 2,
+      -(cropEditor.image.naturalHeight * scale) / 2,
+      cropEditor.image.naturalWidth * scale,
+      cropEditor.image.naturalHeight * scale
+    );
+    ctx.restore();
+  }
+
+  function renderCropEditor() {
+    drawCrop(dom.cropCanvas, 360);
+    drawCrop(dom.cropPreviewCanvas, 96);
+  }
+
+  function getPointerDistance() {
+    const points = Array.from(cropEditor.pointers.values());
+    if (points.length < 2) return 0;
+    return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+  }
+
+  function applyCropEditor() {
+    if (!cropEditor.image) return;
+    const outputType = cropEditor.sourceFile?.type === 'image/jpeg' || cropEditor.sourceFile?.type === 'image/webp'
+      ? cropEditor.sourceFile.type
+      : 'image/png';
+    const canvas = document.createElement('canvas');
+    drawCrop(canvas, 720);
+    const dataUrl = canvas.toDataURL(outputType, 0.94);
+    state.logoFileName = cropEditor.sourceName || state.logoFileName || 'logo_recortado.png';
+    state.pendingLogoFile = dataUrlToFile(dataUrl, state.logoFileName, outputType);
+    state.logoPath = dataUrl;
+    state.cropSourceFile = cropEditor.sourceFile;
+    state.cropSourceDataUrl = cropEditor.sourceDataUrl;
+    state.cropSettings = { zoom: cropEditor.zoom, offsetX: cropEditor.offsetX, offsetY: cropEditor.offsetY, rotation: cropEditor.rotation };
+    updateLogoUI(dataUrl, 'Pendiente de guardar', dataUrl, state.logoFileName);
+    closeCropEditor();
+    markAsUnsaved();
+    triggerLivePreview();
+    showToast(`Logo '${state.logoFileName}' recortado y listo`, 'success');
+  }
+
+  function dataUrlToFile(dataUrl, fileName, type) {
+    const parts = dataUrl.split(',');
+    const binary = atob(parts[1]);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+    const extension = type === 'image/jpeg' ? 'jpg' : type === 'image/webp' ? 'webp' : 'png';
+    const safeName = String(fileName || 'logo').replace(/\.[^.]+$/, '');
+    return new File([bytes], `${safeName}_recortado.${extension}`, { type });
   }
 
   function resolveLogoPreviewUrl(logoPath) {
@@ -798,9 +1122,11 @@ document.addEventListener('DOMContentLoaded', () => {
       dom.logoStorageSource.textContent = storage || (isRemote ? 'Supabase Storage' : 'Almacenamiento Local');
       dom.logoStatusBadge.textContent = 'Logo Activo';
       dom.logoStatusBadge.style.display = 'inline-block';
+      if (dom.editLogoCropBtn) dom.editLogoCropBtn.style.display = state.cropSourceDataUrl ? 'inline-flex' : 'none';
     } else {
       dom.logoPreviewBar.style.display = 'none';
       dom.logoStatusBadge.style.display = 'none';
+      if (dom.editLogoCropBtn) dom.editLogoCropBtn.style.display = 'none';
       dom.logoThumbImg.removeAttribute('src');
     }
   }
@@ -1170,6 +1496,9 @@ document.addEventListener('DOMContentLoaded', () => {
     state.cardId = '';
     state.cardTitle = '';
     state.pendingLogoFile = null;
+    state.cropSourceDataUrl = null;
+    state.cropSourceFile = null;
+    state.cropSettings = null;
     state.logoPath = 'img/kobaia.png';
     updateLogoUI('img/kobaia.png');
     
