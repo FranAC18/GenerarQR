@@ -1,111 +1,185 @@
 <!DOCTYPE html>
-<html lang="es" data-theme="dark">
+<html lang="es" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kobaia QR - Generador de Tarjetas Digitales y QRs Dinámicos</title>
-  <meta name="description" content="Generador profesional de códigos QR interactivos y dinámicos con soporte para logos, vCard, WhatsApp, WiFi, analíticas de escaneo y respaldo en Supabase.">
+  <title>Kobaia QR · Diseñador de Tarjetas Digitales y Códigos QR</title>
+  <meta name="description" content="Generador profesional de códigos QR interactivos y dinámicos con sistema de diseño Apple Subtle Glass, soporte para logotipos, vCard, WhatsApp, WiFi, analíticas y Supabase.">
+  <meta name="theme-color" content="#f5f5f7">
+  
+  <!-- Google Fonts: Inter, Plus Jakarta Sans & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="/static/css/styles.css">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%236366f1'><path d='M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-5 0h2v3h-2v-3zm3 3h2v2h-2v-2zm2 2h3v3h-3v-3zm-4 1h2v2h-2v-2zm-3-3h2v5h-2v-5z'/></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230071e3'><rect x='2' y='2' width='8' height='8' rx='2'/><rect x='14' y='2' width='8' height='8' rx='2'/><rect x='2' y='14' width='8' height='8' rx='2'/><rect x='14' y='14' width='4' height='4'/><rect x='18' y='18' width='4' height='4'/></svg>">
 </head>
 <body>
-  <!-- Toast Container -->
-  <div id="toastContainer" class="toast-container"></div>
+  <!-- Fondo Aurora Glow Apple -->
+  <div class="aurora" aria-hidden="true"></div>
 
-  <!-- Header -->
-  <header class="app-header">
-    <div class="header-container">
-      <div class="brand">
-        <div class="brand-icon">
-          <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
-            <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-5 0h2v3h-2v-3zm3 3h2v2h-2v-2zm2 2h3v3h-3v-3zm-4 1h2v2h-2v-2zm-3-3h2v5h-2v-5z"/>
+  <!-- Toast Container Flotante -->
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+  <!-- ── 01 · NAVBAR FLOTANTE LIQUID GLASS ── -->
+  <div class="nav-wrapper">
+    <nav class="navbar" id="topNavbar">
+      <!-- Marca -->
+      <a href="#" class="nav-brand">
+        <div class="brand-logo-badge">
+          <svg class="icon" style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
           </svg>
         </div>
-        <div class="brand-text">
-          <div class="brand-title-row">
-            <h1 class="brand-title">Kobaia QR</h1>
-            <span id="systemStatusBadge" class="status-pill local" title="Estado de la base de datos">🟡 Modo Local</span>
-          </div>
-          <p class="brand-subtitle">Diseñador y Gestor de Tarjetas Digitales</p>
-        </div>
-      </div>
+        <span>Kobaia QR</span>
+      </a>
 
-      <nav class="nav-tabs">
-        <button class="nav-tab active" id="tabDesignerBtn" data-target="designerSection">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-          <span>Diseñador QR</span>
+      <!-- Navegación con Magnetic Sliding Pill -->
+      <div class="slide-container" id="mainNavGroup" role="tablist" aria-label="Navegación principal">
+        <div class="sliding-pill" id="navIndicator"></div>
+        <button class="nav-link-btn active" id="tabDesignerBtn" role="tab" aria-selected="true" aria-controls="designerSection" data-target="designerSection">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span>Diseñador</span>
         </button>
-        <button class="nav-tab" id="tabCatalogBtn" data-target="catalogSection">
-          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        <button class="nav-link-btn" id="tabCatalogBtn" role="tab" aria-selected="false" aria-controls="catalogSection" data-target="catalogSection">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
           <span>Mis Tarjetas</span>
           <span class="badge-count" id="cardsCountBadge">0</span>
         </button>
-      </nav>
+      </div>
 
-      <div class="header-actions">
-        <button id="exportZipTopBtn" class="btn btn-secondary btn-sm" title="Descargar todas las tarjetas en un archivo .ZIP">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-          <span>Exportar Todo (ZIP)</span>
+      <!-- Acciones del Navbar -->
+      <div class="nav-actions">
+        <!-- Badge de Conexión del Sistema -->
+        <span id="systemStatusBadge" class="status-pill local" title="Estado de la base de datos">
+          <span class="status-dot" aria-hidden="true"></span>
+          <span>Modo Local</span>
+        </span>
+
+        <!-- Menú Desplegable Glass -->
+        <div class="nav-dropdown-host">
+          <button type="button" class="nav-link-btn" aria-haspopup="true" aria-expanded="false" data-nav-dropdown-trigger>
+            <span>Recursos</span>
+            <span class="dropdown-caret" aria-hidden="true">▾</span>
+          </button>
+          <ul class="nav-dropdown" aria-label="Recursos y Enlaces">
+            <li>
+              <a href="/api/tarjetas" target="_blank" rel="noopener">
+                <span class="dropdown-name">API REST Tarjetas</span>
+                <span class="dropdown-blurb">Endpoints JSON y catálogo cloud</span>
+              </a>
+            </li>
+            <li>
+              <a href="/api/status" target="_blank" rel="noopener">
+                <span class="dropdown-name">Estado de Supabase</span>
+                <span class="dropdown-blurb">Conexión a PostgreSQL y Storage</span>
+              </a>
+            </li>
+            <li>
+              <a href="https://github.com/FranAC18/GenerarQR" target="_blank" rel="noopener">
+                <span class="dropdown-name">Repositorio GitHub</span>
+                <span class="dropdown-blurb">Código fuente y documentación</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Botón Exportar ZIP -->
+        <button id="exportZipTopBtn" class="btn-download-pill" title="Descargar todas las tarjetas en un archivo .ZIP">
+          <span class="status-dot"></span>
+          <span>Exportar ZIP</span>
         </button>
-        <button id="themeToggleBtn" class="theme-toggle-btn" aria-label="Cambiar tema de color" title="Alternar Modo Oscuro / Claro">
-          <svg class="sun-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-          <svg class="moon-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+
+        <!-- Toggle de Tema (Modo Claro / Oscuro) -->
+        <button id="themeToggleBtn" class="theme-toggle-btn" type="button" aria-label="Cambiar a modo oscuro" aria-pressed="false" role="switch">
+          <span class="theme-icon-wrap" aria-hidden="true">
+            <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </span>
+          <span id="themeText">Modo Oscuro</span>
         </button>
       </div>
-    </div>
-  </header>
 
-  <!-- Main Container -->
+      <!-- Filtro Liquid Glass (Displacement Map Neutro) -->
+      <svg class="nav-glass-defs" aria-hidden="true" focusable="false" width="0" height="0">
+        <defs>
+          <filter id="kobaia-liquid-glass" color-interpolation-filters="sRGB">
+            <feImage x="0" y="0" width="100%" height="100%" preserveAspectRatio="none" result="map" data-nav-glass-map="true"></feImage>
+            <feDisplacementMap in="SourceGraphic" in2="map" xChannelSelector="R" yChannelSelector="B" scale="-16" result="neutralGlass"></feDisplacementMap>
+            <feGaussianBlur in="neutralGlass" stdDeviation="0.7"></feGaussianBlur>
+          </filter>
+        </defs>
+      </svg>
+    </nav>
+  </div>
+
+  <!-- ── 02 · CONTENEDOR PRINCIPAL ── -->
   <main class="main-content">
-    
+
+    <!-- HERO HEADER -->
+    <header class="hero">
+      <div class="top-bar">
+        <span class="eyebrow">Sistema de Diseño · Apple Subtle Glass v2.0</span>
+      </div>
+      <h1>Kobaia QR · Diseñador de Tarjetas Digitales</h1>
+      <p class="lede">
+        Crea, personaliza y gestiona <strong>códigos QR interactivos y dinámicos</strong> con física esmerilada Liquid Glass, soporte para logotipos centrales, vCard, WhatsApp, analíticas de escaneo y sincronización cloud en Supabase.
+      </p>
+    </header>
+
     <!-- SECTION 1: DISEÑADOR & GENERADOR -->
-    <section id="designerSection" class="content-section active">
+    <section id="designerSection" class="content-section active" role="tabpanel" aria-labelledby="tabDesignerBtn" tabindex="0">
       <div class="studio-grid">
-        
+
         <!-- PANEL IZQUIERDO: CONFIGURADOR -->
-        <div class="config-panel card">
-          
-          <!-- Selector de Tipo de Contenido -->
+        <div class="config-panel card glass">
+
+          <!-- Selector de Tipo de Contenido (Segmented Slide) -->
           <div class="form-group">
-            <label class="section-label">Tipo de Contenido</label>
-            <div class="content-type-selector" id="contentTypeSelector">
-              <button type="button" class="type-btn active" data-type="url">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            <div class="generator-heading">
+              <span class="section-label" id="contentTypeLabel">Tipo de Contenido</span>
+            </div>
+            <div class="content-type-selector segmented" id="contentTypeSelector" role="group" aria-labelledby="contentTypeLabel">
+              <div class="sliding-pill" id="contentTypeIndicator"></div>
+              <button type="button" class="seg type-btn active" data-type="url">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
                 <span>URL Web</span>
               </button>
-              <button type="button" class="type-btn" data-type="vcard">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <button type="button" class="seg type-btn" data-type="vcard">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                 <span>Contacto (vCard)</span>
               </button>
-              <button type="button" class="type-btn" data-type="whatsapp">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm0 18.15c-1.49 0-2.94-.4-4.21-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.204 8.204 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c.02 4.54-3.68 8.23-8.21 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.22.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.53.6.19 1.14.16 1.57.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.07-.1-.23-.17-.48-.29z"/></svg>
+              <button type="button" class="seg type-btn" data-type="whatsapp">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm0 18.15c-1.49 0-2.94-.4-4.21-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.204 8.204 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24 2.2 0 4.27.86 5.82 2.42a8.18 8.18 0 0 1 2.41 5.83c.02 4.54-3.68 8.23-8.21 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.14.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.22.25-.87.85-.87 2.07 0 1.22.89 2.4 1.01 2.56.12.17 1.75 2.67 4.23 3.74.59.26 1.05.41 1.41.53.6.19 1.14.16 1.57.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.07-.1-.23-.17-.48-.29z"/></svg>
                 <span>WhatsApp</span>
               </button>
-              <button type="button" class="type-btn" data-type="wifi">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+              <button type="button" class="seg type-btn" data-type="wifi">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
                 <span>WiFi</span>
               </button>
-              <button type="button" class="type-btn" data-type="text">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="21" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>
+              <button type="button" class="seg type-btn" data-type="text">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="21" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="21" y1="18" x2="3" y2="18"></line></svg>
                 <span>Texto</span>
               </button>
             </div>
           </div>
 
-          <!-- MODO QR DINÁMICO TOGGLE -->
+          <!-- MODO QR DINÁMICO TOGGLE (Apple Card Switch) -->
           <div class="dynamic-toggle-box">
             <div class="dynamic-toggle-info">
               <div class="dynamic-toggle-title">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#f59e0b" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#f59e0b" stroke-width="2" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                 <span>Código QR Dinámico (Redirigible)</span>
-                <span class="badge badge-accent">Recomendado</span>
+                <span class="badge badge-rec"><span class="status-dot" style="width:5px;height:5px;background:var(--accent);"></span>Recomendado</span>
               </div>
-              <p class="dynamic-toggle-desc">Apunta a tu dominio y redirige al destino. Podrás cambiar la URL cuando quieras sin reimprimir el QR físico.</p>
+              <p class="dynamic-toggle-desc">Apunta a tu dominio y redirige al destino. Podrás cambiar el contenido en cualquier momento sin reimprimir el QR físico.</p>
             </div>
-            <label class="switch">
+            <label class="switch" aria-label="Alternar modo QR Dinámico">
               <input type="checkbox" id="isDynamicToggle" checked>
               <span class="slider round"></span>
             </label>
@@ -113,11 +187,11 @@
 
           <!-- Campos Dinámicos según tipo -->
           <div class="fields-container">
-            
-            <!-- Campo ID de Tarjeta (para guardar en catálogo) -->
+
+            <!-- Campo ID de Tarjeta & Título -->
             <div class="input-row">
               <div class="form-group flex-1">
-                <label for="cardIdInput">Identificador de Tarjeta (slug único)</label>
+                <label for="cardIdInput">Identificador Único (slug)</label>
                 <input type="text" id="cardIdInput" class="form-control" placeholder="ej. mi_empresa">
               </div>
               <div class="form-group flex-1">
@@ -131,7 +205,9 @@
               <div class="form-group">
                 <label for="urlInput">Dirección Web (URL de destino)</label>
                 <div class="input-with-icon">
-                  <span class="input-icon">🔗</span>
+                  <span class="input-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                  </span>
                   <input type="url" id="urlInput" class="form-control" placeholder="https://mi-tarjeta.com">
                 </div>
               </div>
@@ -156,7 +232,7 @@
                 </div>
                 <div class="form-group flex-1">
                   <label for="vcardTitle">Cargo / Profesión</label>
-                  <input type="text" id="vcardTitle" class="form-control" placeholder="Cargo">
+                  <input type="text" id="vcardTitle" class="form-control" placeholder="Director General">
                 </div>
               </div>
               <div class="input-row">
@@ -214,24 +290,26 @@
             </div>
           </div>
 
-          <!-- SECCIÓN LOGOTIPO -->
+          <!-- SECCIÓN LOGOTIPO (Acordeón Glass) -->
           <div class="accordion-section">
             <div class="accordion-header" id="logoHeaderToggle">
               <div class="acc-title">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                 <span>Logotipo Central</span>
               </div>
-              <span class="badge" id="logoStatusBadge">Logo Activo</span>
+              <span class="badge badge-rec" id="logoStatusBadge">Logo Activo</span>
             </div>
-            
+
             <div class="accordion-body">
               <!-- Drag & Drop Zone -->
-              <div class="drop-zone" id="logoDropZone">
+              <div class="dropzone drop-zone" id="logoDropZone" role="button" tabindex="0" aria-labelledby="logoDropText">
                 <input type="file" id="logoFileInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" class="file-input-hidden">
-                <div class="drop-zone-content">
-                  <div class="drop-icon">📁</div>
-                  <p class="drop-text">Arrastra tu logo aquí o <strong>haz clic para seleccionar</strong></p>
-                  <p class="drop-hint">Sube directo a Supabase Storage (PNG, JPG, SVG)</p>
+                <div class="dropzone-icon-wrap drop-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                </div>
+                <div>
+                  <p class="drop-text dz-title" id="logoDropText">Arrastra tu logotipo aquí o <strong>haz clic para seleccionar</strong></p>
+                  <p class="drop-hint dz-hint">Compatible con PNG, JPG y SVG (guardado directo en Supabase)</p>
                 </div>
               </div>
 
@@ -244,8 +322,8 @@
                   <span class="logo-name" id="logoNameLabel">kobaia.png</span>
                   <span class="logo-meta" id="logoStorageSource">Logotipo oficial Kobaia</span>
                 </div>
-                <button type="button" class="btn btn-ghost btn-sm" id="removeLogoBtn" title="Quitar logo">
-                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                <button type="button" class="btn btn-ghost btn-sm" id="removeLogoBtn" title="Quitar logotipo">
+                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                   <span>Quitar</span>
                 </button>
               </div>
@@ -256,15 +334,15 @@
           <div class="accordion-section">
             <div class="accordion-header">
               <div class="acc-title">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a7 7 0 0 0 0 14 7 7 0 0 0 0-14z"></path></svg>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a7 7 0 0 0 0 14 7 7 0 0 0 0-14z"></path></svg>
                 <span>Colores y Estilo Visual</span>
               </div>
             </div>
-            
+
             <div class="accordion-body">
               <div class="colors-row">
                 <div class="color-picker-group">
-                  <label>Color del QR</label>
+                  <label for="fillColorPicker">Color del QR</label>
                   <div class="picker-wrapper">
                     <input type="color" id="fillColorPicker" value="#000000">
                     <input type="text" id="fillColorHex" class="form-control hex-input" value="#000000">
@@ -272,7 +350,7 @@
                 </div>
 
                 <div class="color-picker-group">
-                  <label>Color de Fondo</label>
+                  <label for="backColorPicker">Color de Fondo</label>
                   <div class="picker-wrapper">
                     <input type="color" id="backColorPicker" value="#FFFFFF">
                     <input type="text" id="backColorHex" class="form-control hex-input" value="#FFFFFF">
@@ -282,32 +360,33 @@
 
               <!-- Paletas rápidas -->
               <div class="presets-row">
-                <span class="sub-label">Combinaciones rápidas:</span>
+                <span class="sub-label">Combinaciones recomendadas Apple:</span>
                 <div class="presets-pills">
                   <button type="button" class="preset-pill" data-fill="#000000" data-back="#FFFFFF">Clásico (B&N)</button>
-                  <button type="button" class="preset-pill" data-fill="#4f46e5" data-back="#FFFFFF">Índigo Moderno</button>
-                  <button type="button" class="preset-pill" data-fill="#0f172a" data-back="#f8fafc">Slate Elegante</button>
-                  <button type="button" class="preset-pill" data-fill="#059669" data-back="#FFFFFF">Verde Esmeralda</button>
-                  <button type="button" class="preset-pill" data-fill="#dc2626" data-back="#FFFFFF">Rojo Intenso</button>
+                  <button type="button" class="preset-pill" data-fill="#0071e3" data-back="#FFFFFF">Azul Cupertino</button>
+                  <button type="button" class="preset-pill" data-fill="#5e5ce6" data-back="#FFFFFF">Índigo VisionOS</button>
+                  <button type="button" class="preset-pill" data-fill="#1d1d1f" data-back="#f5f5f7">Slate Neutro</button>
+                  <button type="button" class="preset-pill" data-fill="#30d158" data-back="#FFFFFF">Verde Esmeralda</button>
+                  <button type="button" class="preset-pill" data-fill="#ff453a" data-back="#FFFFFF">Rojo Rubí</button>
                 </div>
               </div>
 
-              <!-- Sliders de afinamiento -->
+              <!-- Sliders de precisión -->
               <div class="sliders-group">
-                <div class="slider-control">
-                  <div class="slider-header">
-                    <span>Tamaño del Logo</span>
-                    <span id="logoSizeVal">22%</span>
+                <div class="slider-control slider-box">
+                  <div class="slider-header slider-head">
+                    <span class="slabel">Tamaño del Logo</span>
+                    <span class="slider-val" id="logoSizeVal">22%</span>
                   </div>
-                  <input type="range" id="logoSizeSlider" min="10" max="30" value="22" step="1">
+                  <input type="range" class="slider" id="logoSizeSlider" min="10" max="30" value="22" step="1" aria-label="Tamaño del logotipo central">
                 </div>
 
-                <div class="slider-control">
-                  <div class="slider-header">
-                    <span>Margen de Borde</span>
-                    <span id="borderVal">4 bloques</span>
+                <div class="slider-control slider-box">
+                  <div class="slider-header slider-head">
+                    <span class="slabel">Margen de Seguridad</span>
+                    <span class="slider-val" id="borderVal">4 bloques</span>
                   </div>
-                  <input type="range" id="borderSlider" min="1" max="8" value="4" step="1">
+                  <input type="range" class="slider" id="borderSlider" min="1" max="8" value="4" step="1" aria-label="Margen de borde del código QR">
                 </div>
               </div>
             </div>
@@ -315,10 +394,10 @@
 
         </div>
 
-        <!-- PANEL DERECHO: PREVISUALIZADOR INTERACTIVO -->
+        <!-- PANEL DERECHO: PREVISUALIZADOR INTERACTIVO (Glass Elevated) -->
         <div class="preview-panel">
-          <div class="preview-card card">
-            
+          <div class="preview-card card glass elevated">
+
             <div class="preview-header">
               <div class="status-indicator">
                 <span class="status-dot pulsing"></span>
@@ -337,10 +416,10 @@
               </div>
             </div>
 
-            <!-- Resumen de contenido -->
+            <!-- Resumen de contenido codificado -->
             <div class="qr-meta-box">
               <div class="meta-row">
-                <span class="meta-label">Destino que codifica el QR:</span>
+                <span class="meta-label">Destino codificado en el QR:</span>
                 <span class="dynamic-badge" id="qrModeBadge">⚡ QR Dinámico</span>
               </div>
               <p class="meta-url" id="previewTargetUrl">https://... (Escribe una URL o contenido)</p>
@@ -350,30 +429,30 @@
             <div class="preview-actions">
               <!-- Botón Principal Grande de Guardar -->
               <button type="button" class="btn btn-primary btn-save-main" id="saveToCatalogBtn">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                 <span id="saveBtnLabel">Guardar y Generar Código QR</span>
               </button>
 
-              <!-- Panel de Opciones de Descarga (solo visible tras guardar) -->
+              <!-- Panel de Opciones de Descarga (visible tras guardar) -->
               <div class="download-options-panel" id="downloadOptionsPanel">
                 <div class="action-row">
                   <button type="button" class="btn btn-primary flex-1" id="downloadPngBtn">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     <span>Descargar PNG (HD)</span>
                   </button>
                   <button type="button" class="btn btn-secondary flex-1" id="downloadSvgBtn">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                     <span>Descargar SVG</span>
                   </button>
                 </div>
 
                 <div class="action-row secondary-actions">
-                  <button type="button" class="btn btn-outline flex-1" id="copyImageBtn" title="Copiar imagen al portapapeles">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                  <button type="button" class="btn btn-ghost flex-1" id="copyImageBtn" title="Copiar imagen al portapapeles">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                     <span>Copiar Imagen</span>
                   </button>
-                  <button type="button" class="btn btn-outline flex-1" id="testRedirectLinkBtn" title="Abrir enlace de redirección dinámica">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                  <button type="button" class="btn btn-ghost flex-1" id="testRedirectLinkBtn" title="Abrir enlace de redirección dinámica">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                     <span>Probar Enlace</span>
                   </button>
                 </div>
@@ -387,37 +466,49 @@
     </section>
 
     <!-- SECTION 2: CATÁLOGO DE TARJETAS GUARDADAS -->
-    <section id="catalogSection" class="content-section">
+    <section id="catalogSection" class="content-section" role="tabpanel" aria-labelledby="tabCatalogBtn" tabindex="0">
       <div class="catalog-container">
-        
-        <div class="catalog-header card">
+
+        <div class="catalog-header card glass">
           <div class="catalog-header-left">
             <h2>Catálogo de Tarjetas Digitales</h2>
             <p>Gestiona todas las tarjetas guardadas en la base de datos, supervisa sus escaneos y descárgalas individualmente o en ZIP.</p>
           </div>
           <div class="catalog-header-right">
             <button id="exportAllZipBtn" class="btn btn-primary">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-              <span>Descargar Todo en ZIP</span>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <span>Descargar ZIP</span>
             </button>
             <button id="newCardBtn" class="btn btn-secondary">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              <span>Crear Nueva Tarjeta</span>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>Nueva Tarjeta</span>
             </button>
           </div>
         </div>
 
-        <!-- Buscador -->
-        <div class="search-bar-wrapper">
-          <div class="input-with-icon">
-            <span class="input-icon">🔍</span>
-            <input type="text" id="cardsSearchInput" class="form-control" placeholder="Buscar tarjetas por nombre, slug o enlace...">
+        <!-- Barra de herramientas: Búsqueda tipo Spotlight + Ordenación -->
+        <div class="catalog-toolbar">
+          <div class="search-bar-wrapper search">
+            <svg class="search-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="search" id="cardsSearchInput" placeholder="Buscar tarjetas por nombre, slug o enlace..." autocomplete="off">
+            <span class="search-kbd">⌘K</span>
+          </div>
+
+          <div class="catalog-sort">
+            <label for="catalogSortSelect">Ordenar por</label>
+            <select id="catalogSortSelect" class="form-control">
+              <option value="recent">Más recientes</option>
+              <option value="title">Nombre (A-Z)</option>
+              <option value="scans">Más escaneos</option>
+              <option value="static">Estáticas primero</option>
+              <option value="dynamic">Dinámicas primero</option>
+            </select>
           </div>
         </div>
 
-        <!-- Grid de Tarjetas -->
+        <!-- Grid de Tarjetas (Renderizado Dinámico) -->
         <div class="cards-grid" id="cardsCatalogGrid">
-          <!-- Inyectado dinámicamente -->
+          <!-- Inyectado dinámicamente con estilos .cat-card / .card-item -->
         </div>
 
       </div>
@@ -425,16 +516,30 @@
 
   </main>
 
+  <!-- Barra de acciones móvil (sticky bottom) -->
+  <div id="mobileActionsBar" class="mobile-actions hidden" aria-label="Acciones rápidas en móvil">
+    <button type="button" class="btn btn-primary" id="mobileDownloadPngBtn">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+      <span>Descargar PNG</span>
+    </button>
+    <button type="button" class="btn btn-secondary" id="mobileSaveCatalogBtn">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+      <span>Guardar</span>
+    </button>
+  </div>
+
+  <!-- Footer -->
   <footer class="app-footer">
     <div class="footer-content">
-      <p><strong>QR Digital Studio</strong> • Diseñado para Vercel & Supabase</p>
-      <p class="footer-links">
-        <a href="https://www.instagram.com/kobaia.dev/" target="_blank" rel="noopener"> Kobaia Dev</a> •
+      <p><strong>Kobaia QR Studio</strong> • Sistema de Diseño Apple Subtle Glass &amp; Liquid Glass</p>
+      <p class="footer-links" style="margin-top: 6px;">
+        <a href="https://www.instagram.com/kobaia.dev/" target="_blank" rel="noopener">Kobaia Dev</a> •
         <a href="https://github.com/FranAC18/GenerarQR" target="_blank" rel="noopener">GitHub Repositorio</a>
       </p>
     </div>
   </footer>
 
   <script src="/static/js/app.js"></script>
+  <script src="/static/js/app-ui.js"></script>
 </body>
 </html>
