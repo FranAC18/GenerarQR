@@ -407,11 +407,11 @@ document.addEventListener('DOMContentLoaded', () => {
     dom.isDynamicToggle?.addEventListener('change', (e) => {
       state.isDynamic = e.target.checked;
       if (state.isDynamic) {
-        dom.qrModeBadge.textContent = '⚡ QR Dinámico';
+        dom.qrModeBadge.textContent = 'QR Dinámico';
         dom.qrModeBadge.style.background = 'var(--accent-soft)';
         dom.qrModeBadge.style.color = 'var(--accent)';
       } else {
-        dom.qrModeBadge.textContent = '📌 QR Estático';
+        dom.qrModeBadge.textContent = 'QR Estático';
         dom.qrModeBadge.style.background = 'var(--badge-neutral-bg)';
         dom.qrModeBadge.style.color = 'var(--text-soft)';
       }
@@ -886,8 +886,8 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--glass-border);">
           <div style="display: flex; align-items: center; gap: 6px;">
-            <span class="scan-badge" style="font-size: 11px;">👁️ ${scanCount} scans</span>
-            <span class="badge ${isDynamic ? 'badge-rec' : 'badge-neutral'}" style="font-size: 10.5px; padding: 2px 7px;">${isDynamic ? '⚡ Dinámico' : '📌 Estático'}</span>
+            <span class="scan-badge" style="font-size: 11px;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>${scanCount} scans</span>
+            <span class="badge ${isDynamic ? 'badge-rec' : 'badge-neutral'}" style="font-size: 10.5px; padding: 2px 7px;">${isDynamic ? 'Dinámico' : 'Estático'}</span>
           </div>
           <div class="card-item-actions" style="display: flex; gap: 6px; margin: 0; padding: 0; border: none;">
             <button class="icon-btn edit-card-btn" data-id="${id}" title="Editar tarjeta" type="button">

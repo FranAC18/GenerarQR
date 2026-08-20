@@ -1770,12 +1770,22 @@ input[type="range"].slider::-webkit-slider-thumb:active, input[type="range"]::-w
 }
 
 .scan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-size: 11.5px;
   font-weight: 600;
   color: var(--text-soft);
   background: var(--badge-neutral-bg);
   padding: 3px 9px;
   border-radius: var(--r-pill);
+  border: 1px solid var(--glass-hairline);
+}
+.scan-badge svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  flex-shrink: 0;
 }
 
 .card-item-actions {
@@ -1980,42 +1990,135 @@ input[type="range"].slider::-webkit-slider-thumb:active, input[type="range"]::-w
   }
 }
 
+/* Ocultar elementos auxiliares en tablet y móvil para mantener el menú ultra limpio */
+@media (max-width: 900px) {
+  #systemStatusBadge,
+  .nav-dropdown-host,
+  #exportZipTopBtn {
+    display: none !important;
+  }
+  .theme-toggle-btn #themeText {
+    display: none;
+  }
+  .theme-toggle-btn {
+    padding: 6px;
+    width: 36px;
+    height: 36px;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  .theme-icon-wrap {
+    margin: 0;
+  }
+}
+
 @media (max-width: 768px) {
   .wrap, .main-content {
-    padding-top: 86px;
+    padding-top: 76px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .nav-wrapper {
+    top: 10px;
+    width: calc(100% - 24px);
+    left: 12px;
+    right: 12px;
+    max-width: 100%;
   }
   .navbar {
-    height: 54px;
-    padding: 4px 6px 4px 14px;
+    height: 50px;
+    padding: 4px 6px 4px 10px;
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
   }
-  .nav-brand span {
-    display: none;
+  .nav-brand {
+    font-size: 13.5px;
+    gap: 8px;
   }
-  .nav-actions .btn-download-pill span:not(.status-dot) {
-    display: none;
+  .brand-logo-badge {
+    width: 28px;
+    height: 28px;
   }
-  .nav-actions .btn-download-pill {
-    padding: 0 10px;
+  .slide-container {
+    padding: 3px;
+    gap: 2px;
+  }
+  .nav-link-btn, .nav-tab {
+    padding: 6px 11px;
+    font-size: 12px;
+    gap: 4px;
+  }
+  .nav-link-btn svg {
+    width: 13px;
+    height: 13px;
+  }
+  .badge-count {
+    font-size: 10px;
+    padding: 1px 5px;
   }
   .config-panel {
-    padding: 20px;
+    padding: 18px;
+    gap: 20px;
   }
   .preview-card {
-    padding: 20px;
+    padding: 18px;
   }
   .catalog-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 14px;
+    padding: 20px;
+  }
+  .catalog-header-right {
+    width: 100%;
+    display: flex;
+    gap: 10px;
+  }
+  .catalog-header-right .btn {
+    flex: 1;
   }
   .catalog-toolbar {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
   }
   .input-row {
     flex-direction: column;
+    gap: 12px;
   }
   .colors-row {
     grid-template-columns: 1fr;
+  }
+  h1 {
+    font-size: 26px;
+  }
+  .lede {
+    font-size: 14.5px;
+  }
+}
+
+@media (max-width: 480px) {
+  .nav-brand span {
+    display: none;
+  }
+  .navbar {
+    padding: 3px 5px 3px 6px;
+  }
+  .nav-link-btn, .nav-tab {
+    padding: 5px 8px;
+    font-size: 11.5px;
+  }
+  .content-type-selector .seg, .content-type-selector .type-btn {
+    padding: 7px 3px;
+    gap: 3px;
+  }
+  .content-type-selector .seg span, .content-type-selector .type-btn span {
+    font-size: 11px;
+  }
+  .content-type-selector .seg svg, .content-type-selector .type-btn svg {
+    width: 13px;
+    height: 13px;
   }
 }
 
