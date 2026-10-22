@@ -48,8 +48,26 @@
         "X-Content-Type-Options": "nosniff",
         "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
         "Referrer-Policy": "strict-origin-when-cross-origin",
-        "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
-      }
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Access-Control-Allow-Origin": "https://qr-kobaia.vercel.app",
+        "Cache-Control": "public, max-age=300, must-revalidate"
+      },
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "delete",
+          "target": {
+            "key": "if-none-match"
+          }
+        },
+        {
+          "type": "request.headers",
+          "op": "delete",
+          "target": {
+            "key": "if-modified-since"
+          }
+        }
+      ]
     },
     {
       "src": "/img/(.*)",
@@ -60,8 +78,26 @@
         "X-Content-Type-Options": "nosniff",
         "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
         "Referrer-Policy": "strict-origin-when-cross-origin",
-        "Permissions-Policy": "camera=(), microphone=(), geolocation=()"
-      }
+        "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Access-Control-Allow-Origin": "https://qr-kobaia.vercel.app",
+        "Cache-Control": "public, max-age=300, must-revalidate"
+      },
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "delete",
+          "target": {
+            "key": "if-none-match"
+          }
+        },
+        {
+          "type": "request.headers",
+          "op": "delete",
+          "target": {
+            "key": "if-modified-since"
+          }
+        }
+      ]
     },
     {
       "src": "/(.*)",
@@ -73,8 +109,25 @@
         "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
         "Referrer-Policy": "strict-origin-when-cross-origin",
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+        "Access-Control-Allow-Origin": "https://qr-kobaia.vercel.app",
         "Cache-Control": "no-store"
-      }
+      },
+      "transforms": [
+        {
+          "type": "request.headers",
+          "op": "delete",
+          "target": {
+            "key": "if-none-match"
+          }
+        },
+        {
+          "type": "request.headers",
+          "op": "delete",
+          "target": {
+            "key": "if-modified-since"
+          }
+        }
+      ]
     }
   ]
 }
