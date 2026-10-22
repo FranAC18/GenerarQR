@@ -1,0 +1,2 @@
+[dependency-groups]
+"vercel.proxy" = ["vercel-proxy==0.1.1"]
