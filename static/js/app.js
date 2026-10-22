@@ -217,11 +217,11 @@ document.addEventListener('DOMContentLoaded', () => {
         state.systemStatus = await res.json();
         if (state.systemStatus.mode === 'supabase') {
           dom.systemStatusBadge.className = 'status-pill supabase';
-          dom.systemStatusBadge.innerHTML = '<span class="status-dot" style="background:#22c55e;"></span><span>Supabase Cloud</span>';
+          dom.systemStatusBadge.innerHTML = '<span class="status-dot status-dot--success"></span><span>Supabase Cloud</span>';
           dom.systemStatusBadge.title = 'Conectado a Supabase PostgreSQL y Storage';
         } else {
           dom.systemStatusBadge.className = 'status-pill local';
-          dom.systemStatusBadge.innerHTML = '<span class="status-dot" style="background:#f59e0b;"></span><span>Modo Local</span>';
+          dom.systemStatusBadge.innerHTML = '<span class="status-dot status-dot--warning"></span><span>Modo Local</span>';
           dom.systemStatusBadge.title = 'Usando config.json y almacenamiento local';
         }
       }
@@ -440,7 +440,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const lightness = 50;
       const alpha = 0.93;
       const blur = 11;
-      const blend = 'difference';
       const inset = Math.min(w, h) * (borderRatio * 0.5);
       const svg =
         '<svg viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">' +
@@ -453,12 +452,15 @@ document.addEventListener('DOMContentLoaded', () => {
               '<stop offset="0%" stop-color="#000"/>' +
               '<stop offset="100%" stop-color="blue"/>' +
             '</linearGradient>' +
+            '<filter id="glass-map-blur" x="-11" y="-11" width="' + (w + 22) + '" height="' + (h + 22) + '" filterUnits="userSpaceOnUse">' +
+              '<feGaussianBlur stdDeviation="' + blur + '"/>' +
+            '</filter>' +
           '</defs>' +
           '<rect x="0" y="0" width="' + w + '" height="' + h + '" fill="black"/>' +
           '<rect x="0" y="0" width="' + w + '" height="' + h + '" rx="' + radius + '" fill="url(#red)"/>' +
-          '<rect x="0" y="0" width="' + w + '" height="' + h + '" rx="' + radius + '" fill="url(#blue)" style="mix-blend-mode:' + blend + '"/>' +
+          '<rect x="0" y="0" width="' + w + '" height="' + h + '" rx="' + radius + '" fill="url(#blue)" fill-opacity="0.45"/>' +
           '<rect x="' + inset + '" y="' + inset + '" width="' + (w - inset * 2) + '" height="' + (h - inset * 2) + '" ' +
-                 'rx="' + radius + '" fill="hsl(0 0% ' + lightness + '% / ' + alpha + ')" style="filter:blur(' + blur + 'px)"/>' +
+                 'rx="' + radius + '" fill="hsl(0 0% ' + lightness + '% / ' + alpha + ')" filter="url(#glass-map-blur)"/>' +
         '</svg>';
       return 'data:image/svg+xml,' + encodeURIComponent(svg);
     };
@@ -1360,9 +1362,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (entries.length === 0) {
       dom.cardsCatalogGrid.innerHTML = `
-        <div class="card glass" style="grid-column: 1 / -1; text-align: center; padding: 3rem;">
-          <p style="color: var(--text-muted); font-size: 1.05rem;">No hay tarjetas registradas aún.</p>
-          <button class="btn btn-primary" style="margin-top: 1rem;" id="catalogCreateFirstBtn">Crear mi primera tarjeta</button>
+        <div class="card glass catalog-empty-state">
+          <p class="catalog-empty-state__message">No hay tarjetas registradas aún.</p>
+          <button class="btn btn-primary catalog-empty-state__action" id="catalogCreateFirstBtn">Crear mi primera tarjeta</button>
         </div>
       `;
       document.getElementById('catalogCreateFirstBtn')?.addEventListener('click', () => {
@@ -1388,21 +1390,21 @@ document.addEventListener('DOMContentLoaded', () => {
       cardEl.dataset.search = `${id} ${title} ${url}`.toLowerCase();
 
       cardEl.innerHTML = `
-        <div style="display: flex; gap: 14px; align-items: center;">
-          <div class="card-item-preview" style="width: 56px; height: 56px; border-radius: var(--r-sm); background: #ffffff; flex-shrink: 0; box-shadow: var(--glass-specular);">
-            <img src="" alt="${safeTitle}" id="catalog_preview_${safeCardId}" loading="lazy" decoding="async" style="max-width: 48px; max-height: 48px;">
+        <div class="card-item__header">
+          <div class="card-item-preview card-item-preview--compact">
+            <img class="card-item-preview__image" src="" alt="${safeTitle}" id="catalog_preview_${safeCardId}" loading="lazy" decoding="async">
           </div>
-          <div style="flex: 1; min-width: 0;">
-            <div class="card-item-title" style="font-family: var(--font-display); font-weight: 700; font-size: 14.5px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${safeTitle}</div>
-            <div class="card-item-url" style="font-size: 12px; color: var(--accent); margin-top: 2px;" title="${safeUrl}">${safeUrl}</div>
+          <div class="card-item__content">
+            <div class="card-item-title card-item-title--compact">${safeTitle}</div>
+            <div class="card-item-url card-item-url--compact" title="${safeUrl}">${safeUrl}</div>
           </div>
         </div>
-        <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--glass-border);">
-          <div style="display: flex; align-items: center; gap: 6px;">
-            <span class="scan-badge" style="font-size: 11px;"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" style="display:inline-block; vertical-align:-1px; margin-right:3px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>${scanCount} scans</span>
-            <span class="badge ${isDynamic ? 'badge-rec' : 'badge-neutral'}" style="font-size: 10.5px; padding: 2px 7px;">${isDynamic ? 'Dinámico' : 'Estático'}</span>
+        <div class="card-item__footer">
+          <div class="card-item__meta">
+            <span class="scan-badge scan-badge--compact"><svg class="scan-badge-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>${scanCount} scans</span>
+            <span class="badge ${isDynamic ? 'badge-rec' : 'badge-neutral'} card-item__type">${isDynamic ? 'Dinámico' : 'Estático'}</span>
           </div>
-          <div class="card-item-actions" style="display: flex; gap: 6px; margin: 0; padding: 0; border: none;">
+          <div class="card-item-actions card-item-actions--compact">
             <button class="icon-btn edit-card-btn" data-id="${safeCardId}" title="Editar tarjeta" type="button">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             </button>
@@ -1677,7 +1679,7 @@ document.addEventListener('DOMContentLoaded', () => {
       iconSvg = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
     }
 
-    toast.innerHTML = `<span class="toast-icon" style="display:flex;align-items:center;justify-content:center;flex-shrink:0;">${iconSvg}</span> <span>${escapeHtml(message)}</span>`;
+    toast.innerHTML = `<span class="toast-icon">${iconSvg}</span> <span>${escapeHtml(message)}</span>`;
     dom.toastContainer.appendChild(toast);
 
     setTimeout(() => {
