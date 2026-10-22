@@ -25,14 +25,22 @@ app = FastAPI(
     version="2.1.0"
 )
 
+CORS_ALLOWED_ORIGINS = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "https://qr-kobaia.vercel.app",
+    ).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=CORS_ALLOWED_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Content-Type"],
 )
-
 
 # Modelos Pydantic
 class VCardData(BaseModel):

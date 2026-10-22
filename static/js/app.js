@@ -1372,25 +1372,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     entries.forEach(([id, cardData]) => {
+      const cardId = String(id);
       const url = typeof cardData === 'object' ? cardData.url : cardData;
       const logo = typeof cardData === 'object' ? cardData.logo : '';
-      const title = typeof cardData === 'object' && cardData.title ? cardData.title : id;
+      const title = typeof cardData === 'object' && cardData.title ? cardData.title : cardId;
       const isDynamic = typeof cardData === 'object' ? cardData.is_dynamic : true;
       const scanCount = typeof cardData === 'object' ? (cardData.scan_count || 0) : 0;
+      const safeCardId = escapeHtml(cardId);
+      const safeTitle = escapeHtml(title);
+      const safeUrl = escapeHtml(url);
 
       const cardEl = document.createElement('div');
       cardEl.className = 'cat-card card-item glass';
-      cardEl.dataset.id = id;
+      cardEl.dataset.id = cardId;
       cardEl.dataset.search = `${id} ${title} ${url}`.toLowerCase();
 
       cardEl.innerHTML = `
         <div style="display: flex; gap: 14px; align-items: center;">
           <div class="card-item-preview" style="width: 56px; height: 56px; border-radius: var(--r-sm); background: #ffffff; flex-shrink: 0; box-shadow: var(--glass-specular);">
-            <img src="" alt="${title}" id="catalog_preview_${id}" loading="lazy" decoding="async" style="max-width: 48px; max-height: 48px;">
+            <img src="" alt="${safeTitle}" id="catalog_preview_${safeCardId}" loading="lazy" decoding="async" style="max-width: 48px; max-height: 48px;">
           </div>
           <div style="flex: 1; min-width: 0;">
-            <div class="card-item-title" style="font-family: var(--font-display); font-weight: 700; font-size: 14.5px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(title)}</div>
-            <div class="card-item-url" style="font-size: 12px; color: var(--accent); margin-top: 2px;" title="${escapeHtml(url)}">${escapeHtml(url)}</div>
+            <div class="card-item-title" style="font-family: var(--font-display); font-weight: 700; font-size: 14.5px; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${safeTitle}</div>
+            <div class="card-item-url" style="font-size: 12px; color: var(--accent); margin-top: 2px;" title="${safeUrl}">${safeUrl}</div>
           </div>
         </div>
         <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 10px; border-top: 1px solid var(--glass-border);">
@@ -1399,13 +1403,13 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="badge ${isDynamic ? 'badge-rec' : 'badge-neutral'}" style="font-size: 10.5px; padding: 2px 7px;">${isDynamic ? 'Dinámico' : 'Estático'}</span>
           </div>
           <div class="card-item-actions" style="display: flex; gap: 6px; margin: 0; padding: 0; border: none;">
-            <button class="icon-btn edit-card-btn" data-id="${id}" title="Editar tarjeta" type="button">
+            <button class="icon-btn edit-card-btn" data-id="${safeCardId}" title="Editar tarjeta" type="button">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             </button>
-            <button class="icon-btn download-card-btn" data-id="${id}" title="Descargar PNG" type="button">
+            <button class="icon-btn download-card-btn" data-id="${safeCardId}" title="Descargar PNG" type="button">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </button>
-            <button class="icon-btn danger delete-card-btn" data-id="${id}" title="Eliminar" type="button">
+            <button class="icon-btn danger delete-card-btn" data-id="${safeCardId}" title="Eliminar" type="button">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </div>
@@ -1413,7 +1417,7 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
 
       // Cargar miniatura
-      loadCardThumbnail(id, url, logo, isDynamic);
+      loadCardThumbnail(cardId, url, logo, isDynamic);
 
       // Eventos
       cardEl.querySelector('.edit-card-btn').addEventListener('click', () => loadCardIntoDesigner(id, cardData));
@@ -1689,8 +1693,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>"']/g, m => ({
+    if (str === null || str === undefined) return '';
+    return String(str).replace(/[&<>"']/g, m => ({
       '&': '&amp;',
       '<': '&lt;',
       '>': '&gt;',
