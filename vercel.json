@@ -51,23 +51,7 @@
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
         "Access-Control-Allow-Origin": "https://qr-kobaia.vercel.app",
         "Cache-Control": "public, max-age=300, must-revalidate"
-      },
-      "transforms": [
-        {
-          "type": "request.headers",
-          "op": "delete",
-          "target": {
-            "key": "if-none-match"
-          }
-        },
-        {
-          "type": "request.headers",
-          "op": "delete",
-          "target": {
-            "key": "if-modified-since"
-          }
-        }
-      ]
+      }
     },
     {
       "src": "/img/(.*)",
@@ -81,23 +65,7 @@
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
         "Access-Control-Allow-Origin": "https://qr-kobaia.vercel.app",
         "Cache-Control": "public, max-age=300, must-revalidate"
-      },
-      "transforms": [
-        {
-          "type": "request.headers",
-          "op": "delete",
-          "target": {
-            "key": "if-none-match"
-          }
-        },
-        {
-          "type": "request.headers",
-          "op": "delete",
-          "target": {
-            "key": "if-modified-since"
-          }
-        }
-      ]
+      }
     },
     {
       "src": "/(.*)",
@@ -111,23 +79,7 @@
         "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
         "Access-Control-Allow-Origin": "https://qr-kobaia.vercel.app",
         "Cache-Control": "no-store"
-      },
-      "transforms": [
-        {
-          "type": "request.headers",
-          "op": "delete",
-          "target": {
-            "key": "if-none-match"
-          }
-        },
-        {
-          "type": "request.headers",
-          "op": "delete",
-          "target": {
-            "key": "if-modified-since"
-          }
-        }
-      ]
+      }
     }
   ]
 }
