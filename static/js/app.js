@@ -39,8 +39,15 @@ document.addEventListener('DOMContentLoaded', () => {
     themeText: document.getElementById('themeText'),
     tabDesignerBtn: document.getElementById('tabDesignerBtn'),
     tabCatalogBtn: document.getElementById('tabCatalogBtn'),
+    tabEncryptionBtn: document.getElementById('tabEncryptionBtn'),
     designerSection: document.getElementById('designerSection'),
     catalogSection: document.getElementById('catalogSection'),
+    encryptionSection: document.getElementById('encryptionSection'),
+    encryptionDemoForm: document.getElementById('encryptionDemoForm'),
+    encryptionDemoSaveBtn: document.getElementById('encryptionDemoSaveBtn'),
+    encryptionSetupStatus: document.getElementById('encryptionSetupStatus'),
+    encryptionDemoResult: document.getElementById('encryptionDemoResult'),
+    encryptionAlgorithmBadge: document.getElementById('encryptionAlgorithmBadge'),
     cardsCountBadge: document.getElementById('cardsCountBadge'),
     systemStatusBadge: document.getElementById('systemStatusBadge'),
     
@@ -224,6 +231,21 @@ document.addEventListener('DOMContentLoaded', () => {
           dom.systemStatusBadge.innerHTML = '<span class="status-dot status-dot--warning"></span><span>Modo Local</span>';
           dom.systemStatusBadge.title = 'Usando config.json y almacenamiento local';
         }
+
+        const encryptionReady = state.systemStatus.mode === 'supabase' && state.systemStatus.encryption_ready;
+        if (dom.encryptionAlgorithmBadge) {
+          dom.encryptionAlgorithmBadge.textContent = state.systemStatus.encryption_algorithm || 'AES-256-GCM';
+        }
+        if (dom.encryptionSetupStatus && dom.encryptionDemoSaveBtn) {
+          dom.encryptionDemoSaveBtn.disabled = !encryptionReady;
+          dom.encryptionSetupStatus.classList.toggle('is-ready', encryptionReady);
+          dom.encryptionSetupStatus.classList.toggle('is-error', !encryptionReady);
+          dom.encryptionSetupStatus.textContent = encryptionReady
+            ? 'Supabase conectado y clave AES-256-GCM configurada. Ya puedes enviar datos ficticios.'
+            : state.systemStatus.mode !== 'supabase'
+              ? 'Falta conectar Supabase. Configura SUPABASE_URL y SUPABASE_KEY en .env para guardar y consultar evidencia SQL.'
+              : 'Falta FIELD_ENCRYPTION_KEY. Configura en .env una clave Base64 URL-safe de 32 bytes.';
+        }
       }
     } catch (e) {
       console.warn('No se pudo verificar estado del sistema:', e);
@@ -364,30 +386,33 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function refreshSlidingPills() {
-    ['mainNavGroup', 'contentTypeSelector'].forEach(id => {
-      const c = document.getElementById(id);
-      if (!c) return;
-      const active = c.querySelector('.active');
-      if (active) active.click();
-    });
+    const container = document.getElementById('mainNavGroup');
+    const indicator = document.getElementById('navIndicator');
+    const active = container?.querySelector('.nav-link-btn.active');
+    if (!container || !indicator || !active) return;
+    indicator.style.transform = `translate(${active.offsetLeft}px, ${active.offsetTop}px)`;
+    indicator.style.width = `${active.offsetWidth}px`;
+    indicator.style.height = `${active.offsetHeight}px`;
+    indicator.style.opacity = '1';
   }
 
   // ==========================================
   // NAVEGACIÓN POR PESTAÑAS
   // ==========================================
   function switchTab(tabId) {
-    if (tabId === 'designerSection') {
-      dom.tabDesignerBtn.classList.add('active');
-      dom.tabCatalogBtn.classList.remove('active');
-      dom.designerSection.classList.add('active');
-      dom.catalogSection.classList.remove('active');
-    } else {
-      dom.tabCatalogBtn.classList.add('active');
-      dom.tabDesignerBtn.classList.remove('active');
-      dom.catalogSection.classList.add('active');
-      dom.designerSection.classList.remove('active');
-      loadCatalog();
-    }
+    const tabs = [
+      [dom.tabDesignerBtn, dom.designerSection],
+      [dom.tabCatalogBtn, dom.catalogSection],
+      [dom.tabEncryptionBtn, dom.encryptionSection]
+    ];
+    tabs.forEach(([button, section]) => {
+      const selected = section?.id === tabId;
+      button?.classList.toggle('active', selected);
+      button?.setAttribute('aria-selected', String(selected));
+      section?.classList.toggle('active', selected);
+    });
+
+    if (tabId === 'catalogSection') loadCatalog();
 
     refreshSlidingPills();
 
@@ -524,6 +549,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Navegación
     dom.tabDesignerBtn?.addEventListener('click', () => switchTab('designerSection'));
     dom.tabCatalogBtn?.addEventListener('click', () => switchTab('catalogSection'));
+    dom.tabEncryptionBtn?.addEventListener('click', () => switchTab('encryptionSection'));
+    dom.encryptionDemoForm?.addEventListener('submit', saveEncryptionDemo);
     dom.newCardBtn?.addEventListener('click', () => {
       resetToDefaultCard();
       switchTab('designerSection');
@@ -1606,6 +1633,34 @@ document.addEventListener('DOMContentLoaded', () => {
       loadCatalog();
     } catch (err) {
       showToast(`Error: ${err.message}`, 'error');
+    }
+  }
+
+  async function saveEncryptionDemo(event) {
+    event.preventDefault();
+    if (!dom.encryptionDemoForm || !dom.encryptionDemoSaveBtn) return;
+
+    const fields = Object.fromEntries(new FormData(dom.encryptionDemoForm).entries());
+    dom.encryptionDemoSaveBtn.disabled = true;
+    dom.encryptionDemoResult.className = 'encryption-demo-result';
+    dom.encryptionDemoResult.textContent = 'Cifrando y guardando los dos registros…';
+
+    try {
+      const response = await fetch('/api/cifrado/demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.detail || 'No se pudieron guardar los datos.');
+
+      dom.encryptionDemoResult.classList.add('is-success');
+      dom.encryptionDemoResult.textContent = `${result.message} ID de tarjeta: ${result.card_id}. Ejecuta ahora las consultas SQL de ENCRIPTACION_DEMO.sql.`;
+      showToast('Datos de prueba guardados cifrados en Supabase.', 'success');
+    } catch (error) {
+      dom.encryptionDemoResult.classList.add('is-error');
+      dom.encryptionDemoResult.textContent = error.message;
+      dom.encryptionDemoSaveBtn.disabled = false;
     }
   }
 

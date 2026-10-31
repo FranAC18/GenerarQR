@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
   
-  <link rel="stylesheet" href="/static/css/styles.css?v=v11_csp_styles">
+  <link rel="stylesheet" href="/static/css/styles.css?v=v12_encryption">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230071e3'><rect x='2' y='2' width='8' height='8' rx='2'/><rect x='14' y='2' width='8' height='8' rx='2'/><rect x='2' y='14' width='8' height='8' rx='2'/><rect x='14' y='14' width='4' height='4'/><rect x='18' y='18' width='4' height='4'/></svg>">
 </head>
 <body>
@@ -49,6 +49,10 @@
           <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
           <span>Mis Tarjetas</span>
           <span class="badge-count" id="cardsCountBadge">0</span>
+        </button>
+        <button class="nav-link-btn" id="tabEncryptionBtn" role="tab" aria-selected="false" aria-controls="encryptionSection" data-target="encryptionSection">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="10" rx="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          <span>Cifrado</span>
         </button>
       </div>
 
@@ -539,6 +543,70 @@
       </div>
     </section>
 
+    <!-- SECTION 3: DEMOSTRACIÓN DE CIFRADO EN DOS TABLAS -->
+    <section id="encryptionSection" class="content-section" role="tabpanel" aria-labelledby="tabEncryptionBtn" tabindex="0">
+      <div class="catalog-container encryption-demo-container">
+        <header class="catalog-header card glass">
+          <div class="catalog-header-left">
+            <span class="eyebrow">Evidencia de seguridad</span>
+            <h2>Cifrado de campos en la base de datos</h2>
+            <p>El servidor cifra los datos antes de enviarlos a PostgreSQL. Usa solo información ficticia para esta demostración.</p>
+          </div>
+          <span class="badge badge-rec" id="encryptionAlgorithmBadge">AES-256-GCM</span>
+        </header>
+
+        <form class="card glass encryption-demo-form" id="encryptionDemoForm">
+          <div class="encryption-demo-heading">
+            <h3>Datos que se guardarán cifrados</h3>
+            <p>Una sola acción crea registros en <code>seguridad.usuarios</code> y <code>catalogo.tarjetas</code>.</p>
+          </div>
+
+          <div class="encryption-demo-grid">
+            <div class="encryption-demo-group">
+              <span class="encryption-table-label">Tabla: seguridad.usuarios</span>
+              <div class="form-group">
+                <label for="demoUsername">Usuario de prueba</label>
+                <input class="form-control" id="demoUsername" name="username" type="text" minlength="3" maxlength="80" placeholder="ej. demo_estudiante_01" required autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label for="demoEmail">Correo ficticio</label>
+                <input class="form-control" id="demoEmail" name="email" type="email" maxlength="254" placeholder="ej. estudiante.demo@example.com" required autocomplete="off">
+              </div>
+              <p class="encryption-fields-note">Campos cifrados: <code>usuario</code> y <code>correo</code>.</p>
+            </div>
+
+            <div class="encryption-demo-group">
+              <span class="encryption-table-label">Tabla: catalogo.tarjetas</span>
+              <div class="form-group">
+                <label for="demoCardId">ID de evidencia</label>
+                <input class="form-control" id="demoCardId" name="card_id" type="text" minlength="15" maxlength="80" placeholder="demo-cifrado-001" required autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label for="demoCardTitle">Título de la tarjeta</label>
+                <input class="form-control" id="demoCardTitle" name="card_title" type="text" maxlength="160" placeholder="Tarjeta de demostración" required autocomplete="off">
+              </div>
+              <div class="form-group">
+                <label for="demoDestinationUrl">URL de destino</label>
+                <input class="form-control" id="demoDestinationUrl" name="destination_url" type="url" maxlength="2048" placeholder="https://example.com" required autocomplete="off">
+              </div>
+              <p class="encryption-fields-note">Campos cifrados: <code>title</code> y <code>url</code>.</p>
+            </div>
+          </div>
+
+          <div class="encryption-demo-actions">
+            <p id="encryptionSetupStatus" class="encryption-setup-status" role="status">Comprobando conexión y clave de cifrado…</p>
+            <button class="btn btn-primary" id="encryptionDemoSaveBtn" type="submit" disabled>Guardar datos cifrados</button>
+          </div>
+          <p class="encryption-demo-result" id="encryptionDemoResult" aria-live="polite"></p>
+        </form>
+
+        <aside class="card glass encryption-sql-hint">
+          <h3>Consulta SQL para la evidencia</h3>
+          <p>Después de guardar, ejecuta las consultas del archivo <code>ENCRIPTACION_DEMO.sql</code> en Supabase SQL Editor y muestra los valores que empiezan con <code>enc:v1:</code>.</p>
+        </aside>
+      </div>
+    </section>
+
   </main>
 
   <!-- Barra de acciones móvil (sticky bottom) -->
@@ -613,7 +681,7 @@
     </div>
   </footer>
 
-  <script src="/static/js/app.js?v=v11_csp_styles"></script>
+  <script src="/static/js/app.js?v=v12_encryption"></script>
   <script src="/static/js/app-ui.js?v=v11_csp_styles"></script>
 </body>
 </html>

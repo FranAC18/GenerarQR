@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from core.qr_engine import QREngine
 from core.db_manager import db
+from core.field_encryption import encryption_ready
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "static")
@@ -104,6 +105,14 @@ class TarjetaSaveRequest(BaseModel):
     wifi_data: Optional[Dict[str, Any]] = None
 
 
+class EncryptionDemoRequest(BaseModel):
+    username: str = Field(min_length=3, max_length=80)
+    email: str = Field(min_length=5, max_length=254)
+    card_id: str = Field(min_length=15, max_length=80)
+    card_title: str = Field(min_length=1, max_length=160)
+    destination_url: str = Field(min_length=1, max_length=2048)
+
+
 def get_base_url(req: Optional[Request] = None, override: Optional[str] = None) -> str:
     """Calcula la URL base del servidor para generar enlaces dinámicos /c/{slug}."""
     if override and override.strip():
@@ -156,7 +165,7 @@ def resolve_payload_text(req: QRGenerateRequest, base_url_str: str) -> str:
 # REDIRECCIÓN DE CÓDIGOS QR DINÁMICOS CON ANALÍTICAS
 # =============================================================================
 @app.get("/c/{card_id}")
-def redirect_dynamic_qr(card_id: str):
+def redirect_dynamic_qr(card_id: str, request: Request):
     """
     Endpoint de redirección para Códigos QR Dinámicos.
     Registra el escaneo (+1 en scan_count) y redirige al usuario a la URL final.
@@ -166,7 +175,12 @@ def redirect_dynamic_qr(card_id: str):
         raise HTTPException(status_code=404, detail="Tarjeta digital no encontrada.")
 
     # Incrementar analíticas de escaneo
-    db.increment_scan(card_id)
+    db.increment_scan(card_id, {
+        "ip": request.headers.get("x-forwarded-for", request.client.host if request.client else None),
+        "user_agent": request.headers.get("user-agent"),
+        "referer": request.headers.get("referer"),
+        "dispositivo": request.headers.get("sec-ch-ua-platform"),
+    })
 
     target_url = card.get("url", "").strip()
     if not target_url:
@@ -185,7 +199,60 @@ def redirect_dynamic_qr(card_id: str):
 @app.get("/api/status")
 def get_system_status():
     """Retorna el estado de la conexión a Supabase o Modo Local."""
-    return db.get_status()
+    status = db.get_status()
+    status["encryption_ready"] = encryption_ready()
+    status["encryption_algorithm"] = "AES-256-GCM"
+    return status
+
+
+@app.post("/api/cifrado/demo")
+def save_encryption_demo(payload: EncryptionDemoRequest):
+    """Guarda datos de demostración cifrados en seguridad y catálogo."""
+    if not encryption_ready():
+        raise HTTPException(
+            status_code=503,
+            detail="Falta configurar FIELD_ENCRYPTION_KEY en el servidor.",
+        )
+    if not db.is_supabase:
+        raise HTTPException(
+            status_code=503,
+            detail="La evidencia SQL requiere conectar la aplicación con Supabase.",
+        )
+
+    username = payload.username.strip()
+    email = payload.email.strip().lower()
+    card_id = payload.card_id.strip()
+    card_title = payload.card_title.strip()
+    destination_url = payload.destination_url.strip()
+
+    if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
+        raise HTTPException(status_code=422, detail="Ingresa un correo de demostración válido.")
+    if not card_id.startswith("demo-cifrado-"):
+        raise HTTPException(
+            status_code=422,
+            detail="El identificador de evidencia debe empezar con demo-cifrado-.",
+        )
+
+    try:
+        db.save_demo_user(username, email)
+        card_result = db.save_card(card_id, {
+            "title": card_title,
+            "url": destination_url,
+            "content_type": "url",
+            "is_dynamic": True,
+        }, require_supabase=True)
+        if card_result.get("storage") != "supabase":
+            raise RuntimeError("La tarjeta no quedó guardada en Supabase.")
+    except RuntimeError as exc:
+        message = str(exc)
+        status_code = 409 if "ya están registrados" in message else 500
+        raise HTTPException(status_code=status_code, detail=message) from exc
+
+    return {
+        "status": "success",
+        "message": "Los dos registros se guardaron cifrados en Supabase.",
+        "card_id": card_id,
+    }
 
 
 @app.get("/api/tarjetas")

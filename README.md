@@ -24,6 +24,8 @@ Aplicación web profesional e interactiva para la creación, personalización, g
 - **☁️ Supabase Cloud (PostgreSQL + Object Storage)**:
   - Base de datos en la nube para persistencia global sincronizada.
   - Bucket `qr-logos` para hospedar logotipos de clientes con CDN pública permanente.
+  - Base segmentada en los esquemas `seguridad`, `catalogo`, `analitica` y `auditoria`.
+  - Auditoría de operaciones exitosas (`auditoria."try"`) y fallidas (`auditoria."catch"`).
   - Script SQL listo para ejecutar en 1 clic (`supabase_schema.sql`).
 - **🛡️ Modo Híbrido Resiliente (Zero Config)**:
   - Si no configuras claves de Supabase, la app funciona de inmediato en **Modo Local** (`config.json` + `img/`).
@@ -55,7 +57,9 @@ scriptQr/
 ├── app.py                  # Servidor FastAPI principal y endpoints de redirección
 ├── run.py                  # Lanzador local con auto-detección de entorno virtual y puertos
 ├── run.bat                 # Lanzador rápido con doble clic para Windows
-├── supabase_schema.sql     # Script SQL para inicializar Supabase en 1 clic
+├── supabase_schema.sql     # Script SQL segmentado para inicializar Supabase
+├── SEGMENTACION_BD.md      # Diseño de esquemas, auditoría y puesta en marcha
+├── GUION_VIDEO_3_MIN.md    # Guion de presentación de la segmentación
 ├── vercel.json             # Archivo de configuración de despliegue en Vercel
 ├── DOCUMENTACION.md        # Documentación técnica completa
 ├── .env.example            # Plantilla de variables de entorno
@@ -82,8 +86,23 @@ scriptQr/
 3. En la sección **Environment Variables**, añade:
    - `SUPABASE_URL`: `https://tu-proyecto.supabase.co`
    - `SUPABASE_KEY`: `tu_clave_anon_o_service`
+   - `FIELD_ENCRYPTION_KEY`: una clave nueva de 32 bytes en Base64 URL-safe
    - `BASE_URL`: `https://tu-proyecto.vercel.app` (la URL que te asigna Vercel)
 4. Haz clic en **Deploy**. ¡Tu generador estará en línea en segundos!
+
+### Cifrado de campos para la demostración
+
+La aplicación cifra `usuario` y `correo` en `seguridad.usuarios`, además de `title` y `url` en `catalogo.tarjetas`, con **AES-256-GCM** antes de enviar los registros a PostgreSQL. Al leer una tarjeta, la aplicación los descifra en el servidor. La clave nunca se guarda en la base ni se envía al navegador.
+
+1. La instancia publicada `qr-kobaia.vercel.app` ya está conectada a Supabase. Conserva sus variables actuales `SUPABASE_URL` y `SUPABASE_KEY`.
+2. Genera una clave con `python -c "import base64,secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"` y agrégala como `FIELD_ENCRYPTION_KEY` en Vercel. Mantén la clave privada y guarda una copia segura: perderla impide descifrar los registros.
+3. Para una base existente, ejecuta una vez [MIGRACION_CIFRADO.sql](MIGRACION_CIFRADO.sql) en Supabase SQL Editor. Una instalación nueva puede usar el [esquema actualizado](supabase_schema.sql).
+4. Publica esta versión del repositorio y confirma en `/api/status` que aparezcan `mode: supabase`, `connected: true` y `encryption_ready: true`.
+5. Entra en **Cifrado**, envía datos ficticios y ejecuta las consultas de [ENCRIPTACION_DEMO.sql](ENCRIPTACION_DEMO.sql) para ver los ciphertexts.
+6. Para ejecutar la app localmente, instala las dependencias con `pip install -r requirements.txt` y configura `.env` con las variables de Supabase y la misma clave de cifrado.
+7. Sigue [el guion de grabación](GUION_VIDEO_CIFRADO_3_MIN.md) para preparar la evidencia de menos de cinco minutos.
+
+No uses datos reales en la demostración.
 
 ---
 

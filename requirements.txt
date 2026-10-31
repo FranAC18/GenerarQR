@@ -9,3 +9,4 @@ lxml>=5.1.0
 supabase>=2.3.0
 httpx>=0.27.0
 python-dotenv>=1.0.0
+cryptography>=42.0.0

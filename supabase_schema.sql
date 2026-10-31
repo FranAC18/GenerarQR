@@ -1,74 +1,373 @@
 -- ============================================================================
--- QR DIGITAL STUDIO - ESQUEMA DE BASE DE DATOS Y STORAGE PARA SUPABASE
+-- KOBAIA QR - BASE DE DATOS SEGMENTADA POR MÓDULOS
+-- Motor: PostgreSQL / Supabase
 -- ============================================================================
--- Copia y pega este script completo en el SQL Editor de tu proyecto Supabase.
--- Dashboard -> SQL Editor -> New Query -> Run
+-- Ejecutar en Supabase -> SQL Editor.
+-- Después de ejecutar este archivo, agregar estos esquemas a la lista de
+-- schemas expuestos por la API REST de Supabase:
+--   seguridad, catalogo, analitica, auditoria
+-- ============================================================================
 
--- 1. CREACIÓN DE LA TABLA 'tarjetas'
-CREATE TABLE IF NOT EXISTS public.tarjetas (
-    id TEXT PRIMARY KEY,                       -- Slug único (ej: 'macrojaguar', 'fredyurquizo')
-    title TEXT NOT NULL,                      -- Título visible de la tarjeta
-    url TEXT NOT NULL,                        -- URL o payload de destino
-    content_type TEXT DEFAULT 'url',          -- 'url', 'vcard', 'whatsapp', 'wifi', 'text'
-    logo_url TEXT,                            -- URL pública del logotipo en Supabase Storage
-    style_config JSONB DEFAULT '{}'::jsonb,   -- fill_color, back_color, logo_size_ratio, etc.
-    vcard_data JSONB,                         -- Datos estructurados si es vCard
-    whatsapp_data JSONB,                      -- Datos de WhatsApp (phone, message)
-    wifi_data JSONB,                          -- Datos de red WiFi (ssid, pass, auth)
-    is_dynamic BOOLEAN DEFAULT false,         -- True si el QR apunta al enlace de redirección /c/{id}
-    scan_count INTEGER DEFAULT 0,             -- Contador de escaneos en tiempo real
-    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- 1. ESQUEMAS DE LOS MÓDULOS
+CREATE SCHEMA IF NOT EXISTS seguridad;
+CREATE SCHEMA IF NOT EXISTS catalogo;
+CREATE SCHEMA IF NOT EXISTS analitica;
+CREATE SCHEMA IF NOT EXISTS auditoria;
+
+-- 2. MÓDULO SEGURIDAD: usuarios y roles
+CREATE TABLE IF NOT EXISTS seguridad.usuarios (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    usuario TEXT NOT NULL,
+    nombre_completo TEXT,
+    correo TEXT,
+    usuario_hmac TEXT,
+    correo_hmac TEXT,
+    rol TEXT NOT NULL DEFAULT 'operador'
+        CHECK (rol IN ('administrador', 'operador', 'auditor')),
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- Habilitar Row Level Security (RLS)
-ALTER TABLE public.tarjetas ENABLE ROW LEVEL SECURITY;
+-- Los campos usuario/correo se cifran en la aplicación con AES-256-GCM.
+-- Estos HMAC permiten conservar la unicidad sin guardar el valor en claro.
+ALTER TABLE seguridad.usuarios ADD COLUMN IF NOT EXISTS usuario_hmac TEXT;
+ALTER TABLE seguridad.usuarios ADD COLUMN IF NOT EXISTS correo_hmac TEXT;
+ALTER TABLE seguridad.usuarios DROP CONSTRAINT IF EXISTS usuarios_usuario_key;
+ALTER TABLE seguridad.usuarios DROP CONSTRAINT IF EXISTS usuarios_correo_key;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_usuario_hmac
+    ON seguridad.usuarios (usuario_hmac) WHERE usuario_hmac IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_correo_hmac
+    ON seguridad.usuarios (correo_hmac) WHERE correo_hmac IS NOT NULL;
 
--- Políticas de acceso público (Lectura y Escritura anónima o autenticada)
-CREATE POLICY "Permitir lectura publica de tarjetas"
-ON public.tarjetas FOR SELECT
+-- 3. MÓDULO CATÁLOGO: tarjetas digitales y su configuración
+CREATE TABLE IF NOT EXISTS catalogo.tarjetas (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    url TEXT NOT NULL,
+    content_type TEXT NOT NULL DEFAULT 'url'
+        CHECK (content_type IN ('url', 'vcard', 'whatsapp', 'wifi', 'text')),
+    logo_url TEXT,
+    style_config JSONB NOT NULL DEFAULT '{}'::jsonb,
+    vcard_data JSONB,
+    whatsapp_data JSONB,
+    wifi_data JSONB,
+    is_dynamic BOOLEAN NOT NULL DEFAULT FALSE,
+    scan_count INTEGER NOT NULL DEFAULT 0 CHECK (scan_count >= 0),
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- Migración segura desde la tabla anterior public.tarjetas, si existe.
+-- No elimina ni modifica la tabla anterior; copia los registros faltantes.
+DO $$
+BEGIN
+    IF to_regclass('public.tarjetas') IS NOT NULL THEN
+        EXECUTE $migration$
+            INSERT INTO catalogo.tarjetas (
+                id, title, url, content_type, logo_url, style_config,
+                vcard_data, whatsapp_data, wifi_data, is_dynamic, scan_count,
+                creado_en, actualizado_en
+            )
+            SELECT
+                id, title, url, COALESCE(content_type, 'url'), logo_url,
+                COALESCE(style_config, '{}'::jsonb), vcard_data,
+                whatsapp_data, wifi_data, COALESCE(is_dynamic, FALSE),
+                COALESCE(scan_count, 0),
+                COALESCE(created_at, timezone('utc'::text, now())),
+                COALESCE(updated_at, timezone('utc'::text, now()))
+            FROM public.tarjetas
+            ON CONFLICT (id) DO NOTHING
+        $migration$;
+    END IF;
+END
+$$;
+
+-- 4. MÓDULO ANALÍTICA: detalle de cada escaneo
+CREATE TABLE IF NOT EXISTS analitica.escaneos (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    tarjeta_id TEXT NOT NULL REFERENCES catalogo.tarjetas(id) ON DELETE CASCADE,
+    fecha_hora TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    ip TEXT,
+    user_agent TEXT,
+    referer TEXT,
+    dispositivo TEXT,
+    resultado TEXT NOT NULL DEFAULT 'exitoso'
+        CHECK (resultado IN ('exitoso', 'fallido'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_escaneos_tarjeta_fecha
+    ON analitica.escaneos (tarjeta_id, fecha_hora DESC);
+
+-- 5. MÓDULO AUDITORÍA: operaciones correctas y operaciones fallidas
+-- "try" registra toda operación confirmada.
+CREATE TABLE IF NOT EXISTS auditoria."try" (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    usuario TEXT NOT NULL DEFAULT current_user,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    hora TIME NOT NULL DEFAULT LOCALTIME,
+    accion_realizada TEXT NOT NULL,
+    modulo TEXT NOT NULL,
+    esquema TEXT NOT NULL,
+    tabla TEXT NOT NULL,
+    operacion TEXT NOT NULL,
+    registro_id TEXT,
+    ip TEXT,
+    user_agent TEXT,
+    request_id TEXT,
+    datos_anteriores JSONB,
+    datos_nuevos JSONB,
+    detalle JSONB NOT NULL DEFAULT '{}'::jsonb,
+    fecha_hora TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+-- "catch" registra operaciones rechazadas o que terminaron con excepción.
+CREATE TABLE IF NOT EXISTS auditoria."catch" (
+    id BIGINT GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
+    usuario TEXT NOT NULL DEFAULT current_user,
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    hora TIME NOT NULL DEFAULT LOCALTIME,
+    accion_realizada TEXT NOT NULL,
+    modulo TEXT NOT NULL,
+    esquema TEXT,
+    tabla TEXT,
+    operacion TEXT,
+    registro_id TEXT,
+    ip TEXT,
+    user_agent TEXT,
+    request_id TEXT,
+    codigo_error TEXT,
+    mensaje_error TEXT NOT NULL,
+    detalle JSONB NOT NULL DEFAULT '{}'::jsonb,
+    fecha_hora TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_auditoria_try_fecha
+    ON auditoria."try" (fecha_hora DESC);
+CREATE INDEX IF NOT EXISTS idx_auditoria_catch_fecha
+    ON auditoria."catch" (fecha_hora DESC);
+
+-- 6. FUNCIONES DE AUDITORÍA
+CREATE OR REPLACE FUNCTION auditoria.usuario_actual()
+RETURNS TEXT
+LANGUAGE plpgsql
+STABLE
+AS $$
+DECLARE
+    claims TEXT;
+    claims_json JSONB;
+BEGIN
+    claims := current_setting('request.jwt.claims', true);
+    IF claims IS NOT NULL AND claims <> '' THEN
+        claims_json := claims::jsonb;
+        RETURN COALESCE(
+            NULLIF(claims_json ->> 'email', ''),
+            NULLIF(claims_json ->> 'sub', ''),
+            current_user
+        );
+    END IF;
+    RETURN current_user;
+EXCEPTION WHEN OTHERS THEN
+    RETURN current_user;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION auditoria.registrar_operacion(
+    p_usuario TEXT,
+    p_accion TEXT,
+    p_modulo TEXT,
+    p_esquema TEXT,
+    p_tabla TEXT,
+    p_operacion TEXT,
+    p_registro_id TEXT DEFAULT NULL,
+    p_ip TEXT DEFAULT NULL,
+    p_user_agent TEXT DEFAULT NULL,
+    p_request_id TEXT DEFAULT NULL,
+    p_datos_anteriores JSONB DEFAULT NULL,
+    p_datos_nuevos JSONB DEFAULT NULL,
+    p_detalle JSONB DEFAULT '{}'::jsonb
+)
+RETURNS VOID
+LANGUAGE SQL
+SECURITY DEFINER
+SET search_path = auditoria, public
+AS $$
+    INSERT INTO auditoria."try" (
+        usuario, accion_realizada, modulo, esquema, tabla, operacion,
+        registro_id, ip, user_agent, request_id, datos_anteriores,
+        datos_nuevos, detalle
+    ) VALUES (
+        COALESCE(NULLIF(p_usuario, ''), auditoria.usuario_actual()),
+        p_accion, p_modulo, p_esquema, p_tabla, p_operacion,
+        p_registro_id, p_ip, p_user_agent, p_request_id,
+        p_datos_anteriores, p_datos_nuevos, COALESCE(p_detalle, '{}'::jsonb)
+    );
+$$;
+
+CREATE OR REPLACE FUNCTION auditoria.registrar_error(
+    p_usuario TEXT,
+    p_accion TEXT,
+    p_modulo TEXT,
+    p_mensaje_error TEXT,
+    p_esquema TEXT DEFAULT NULL,
+    p_tabla TEXT DEFAULT NULL,
+    p_operacion TEXT DEFAULT NULL,
+    p_registro_id TEXT DEFAULT NULL,
+    p_ip TEXT DEFAULT NULL,
+    p_user_agent TEXT DEFAULT NULL,
+    p_request_id TEXT DEFAULT NULL,
+    p_codigo_error TEXT DEFAULT NULL,
+    p_detalle JSONB DEFAULT '{}'::jsonb
+)
+RETURNS VOID
+LANGUAGE SQL
+SECURITY DEFINER
+SET search_path = auditoria, public
+AS $$
+    INSERT INTO auditoria."catch" (
+        usuario, accion_realizada, modulo, esquema, tabla, operacion,
+        registro_id, ip, user_agent, request_id, codigo_error,
+        mensaje_error, detalle
+    ) VALUES (
+        COALESCE(NULLIF(p_usuario, ''), auditoria.usuario_actual()),
+        p_accion, p_modulo, p_esquema, p_tabla, p_operacion,
+        p_registro_id, p_ip, p_user_agent, p_request_id, p_codigo_error,
+        p_mensaje_error, COALESCE(p_detalle, '{}'::jsonb)
+    );
+$$;
+
+-- Trigger automático para INSERT, UPDATE y DELETE confirmados.
+CREATE OR REPLACE FUNCTION auditoria.trg_registrar_operacion()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, auditoria
+AS $$
+DECLARE
+    v_nuevo JSONB;
+    v_anterior JSONB;
+    v_id TEXT;
+    v_ip TEXT;
+BEGIN
+    v_nuevo := CASE WHEN TG_OP <> 'DELETE' THEN to_jsonb(NEW) ELSE NULL END;
+    v_anterior := CASE WHEN TG_OP <> 'INSERT' THEN to_jsonb(OLD) ELSE NULL END;
+    v_id := COALESCE(v_nuevo ->> 'id', v_anterior ->> 'id');
+    v_ip := NULLIF(current_setting('request.headers', true), '');
+
+    PERFORM auditoria.registrar_operacion(
+        auditoria.usuario_actual(),
+        TG_OP || ' en ' || TG_TABLE_SCHEMA || '.' || TG_TABLE_NAME,
+        TG_TABLE_SCHEMA,
+        TG_TABLE_SCHEMA,
+        TG_TABLE_NAME,
+        TG_OP,
+        v_id,
+        v_ip,
+        NULL,
+        NULL,
+        v_anterior,
+        v_nuevo,
+        jsonb_build_object('origen', 'trigger_postgresql')
+    );
+
+    RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_auditoria_tarjetas ON catalogo.tarjetas;
+CREATE TRIGGER trg_auditoria_tarjetas
+AFTER INSERT OR UPDATE OR DELETE ON catalogo.tarjetas
+FOR EACH ROW EXECUTE FUNCTION auditoria.trg_registrar_operacion();
+
+DROP TRIGGER IF EXISTS trg_auditoria_escaneos ON analitica.escaneos;
+CREATE TRIGGER trg_auditoria_escaneos
+AFTER INSERT OR UPDATE OR DELETE ON analitica.escaneos
+FOR EACH ROW EXECUTE FUNCTION auditoria.trg_registrar_operacion();
+
+DROP TRIGGER IF EXISTS trg_auditoria_usuarios ON seguridad.usuarios;
+CREATE TRIGGER trg_auditoria_usuarios
+AFTER INSERT OR UPDATE OR DELETE ON seguridad.usuarios
+FOR EACH ROW EXECUTE FUNCTION auditoria.trg_registrar_operacion();
+
+-- 7. RLS Y PERMISOS MÍNIMOS PARA LA API
+ALTER TABLE seguridad.usuarios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE catalogo.tarjetas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE analitica.escaneos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE auditoria."try" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE auditoria."catch" ENABLE ROW LEVEL SECURITY;
+
+-- Estas políticas mantienen el comportamiento actual de la aplicación.
+-- En producción conviene reemplazarlas por políticas basadas en auth.uid().
+DROP POLICY IF EXISTS "api_usuarios" ON seguridad.usuarios;
+CREATE POLICY "api_usuarios" ON seguridad.usuarios FOR ALL TO anon, authenticated
+USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "api_tarjetas" ON catalogo.tarjetas;
+CREATE POLICY "api_tarjetas" ON catalogo.tarjetas FOR ALL TO anon, authenticated
+USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "api_escaneos" ON analitica.escaneos;
+CREATE POLICY "api_escaneos" ON analitica.escaneos FOR ALL TO anon, authenticated
+USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "api_auditoria_try" ON auditoria."try";
+CREATE POLICY "api_auditoria_try" ON auditoria."try" FOR SELECT TO anon, authenticated
 USING (true);
 
-CREATE POLICY "Permitir insercion y actualizacion publica de tarjetas"
-ON public.tarjetas FOR ALL
-USING (true)
+DROP POLICY IF EXISTS "api_auditoria_try_insert" ON auditoria."try";
+CREATE POLICY "api_auditoria_try_insert" ON auditoria."try" FOR INSERT TO anon, authenticated
 WITH CHECK (true);
 
--- 2. CREACIÓN DEL BUCKET DE STORAGE PARA LOGOTIPOS
+DROP POLICY IF EXISTS "api_auditoria_catch" ON auditoria."catch";
+CREATE POLICY "api_auditoria_catch" ON auditoria."catch" FOR SELECT TO anon, authenticated
+USING (true);
+
+DROP POLICY IF EXISTS "api_auditoria_catch_insert" ON auditoria."catch";
+CREATE POLICY "api_auditoria_catch_insert" ON auditoria."catch" FOR INSERT TO anon, authenticated
+WITH CHECK (true);
+
+GRANT USAGE ON SCHEMA seguridad, catalogo, analitica, auditoria TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON seguridad.usuarios, catalogo.tarjetas,
+    analitica.escaneos TO anon, authenticated;
+GRANT SELECT, INSERT ON auditoria."try", auditoria."catch" TO anon, authenticated;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA analitica, auditoria TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION auditoria.registrar_operacion(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, JSONB, JSONB, JSONB) TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION auditoria.registrar_error(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, JSONB) TO anon, authenticated;
+
+-- 8. STORAGE: módulo de archivos para logotipos
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('qr-logos', 'qr-logos', true)
 ON CONFLICT (id) DO NOTHING;
 
--- Políticas de Storage para el bucket 'qr-logos'
-CREATE POLICY "Logos acceso publico"
-ON storage.objects FOR SELECT
+DROP POLICY IF EXISTS "Logos acceso publico" ON storage.objects;
+CREATE POLICY "Logos acceso publico" ON storage.objects FOR SELECT
 USING (bucket_id = 'qr-logos');
 
-CREATE POLICY "Logos subida publica"
-ON storage.objects FOR INSERT
+DROP POLICY IF EXISTS "Logos subida publica" ON storage.objects;
+CREATE POLICY "Logos subida publica" ON storage.objects FOR INSERT
 WITH CHECK (bucket_id = 'qr-logos');
 
-CREATE POLICY "Logos actualizacion publica"
-ON storage.objects FOR UPDATE
+DROP POLICY IF EXISTS "Logos actualizacion publica" ON storage.objects;
+CREATE POLICY "Logos actualizacion publica" ON storage.objects FOR UPDATE
 USING (bucket_id = 'qr-logos');
 
-CREATE POLICY "Logos eliminacion publica"
-ON storage.objects FOR DELETE
+DROP POLICY IF EXISTS "Logos eliminacion publica" ON storage.objects;
+CREATE POLICY "Logos eliminacion publica" ON storage.objects FOR DELETE
 USING (bucket_id = 'qr-logos');
 
--- 3. DATOS INICIALES (MIGRACIÓN DESDE CONFIG.JSON)
-INSERT INTO public.tarjetas (id, title, url, logo_url, is_dynamic, style_config)
-VALUES 
-    (
-        'kobaia', 
-        'Kobaia Dev', 
-        'https://www.instagram.com/kobaia.dev/', 
-        'img/kobaia.png',
-        true,
-        '{"fill_color": "#000000", "back_color": "#FFFFFF", "logo_size_ratio": 0.22, "border": 4}'::jsonb
-    )
-ON CONFLICT (id) DO UPDATE 
-SET 
+-- 9. DATOS INICIALES
+INSERT INTO catalogo.tarjetas (id, title, url, logo_url, is_dynamic, style_config)
+VALUES (
+    'kobaia',
+    'Kobaia Dev',
+    'https://www.instagram.com/kobaia.dev/',
+    'img/kobaia.png',
+    TRUE,
+    '{"fill_color":"#000000","back_color":"#FFFFFF","logo_size_ratio":0.22,"border":4}'::jsonb
+)
+ON CONFLICT (id) DO UPDATE SET
     url = EXCLUDED.url,
     title = EXCLUDED.title,
     logo_url = EXCLUDED.logo_url;

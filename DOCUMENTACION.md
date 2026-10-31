@@ -235,20 +235,19 @@ Sube una imagen de logotipo a Supabase Storage (o almacenamiento local).
 
 El script SQL completo se encuentra en [supabase_schema.sql](file:///f:/Prácticas/Tarjetas%20digitales/scriptQr/supabase_schema.sql).
 
-### Tabla: `public.tarjetas`
-```sql
-CREATE TABLE IF NOT EXISTS public.tarjetas (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    url TEXT NOT NULL,
-    logo_url TEXT,
-    is_dynamic BOOLEAN DEFAULT true,
-    scan_count INTEGER DEFAULT 0,
-    style_config JSONB DEFAULT '{}'::jsonb,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-```
+### Esquemas segmentados
+
+La base de datos está dividida por módulos:
+
+- `seguridad.usuarios`: usuarios, roles y estado de acceso.
+- `catalogo.tarjetas`: tarjetas, contenido, diseño y estado dinámico.
+- `analitica.escaneos`: historial detallado de escaneos.
+- `auditoria."try"`: operaciones confirmadas.
+- `auditoria."catch"`: operaciones fallidas y excepciones capturadas.
+
+El script incluye triggers para auditar automáticamente los cambios de las
+tablas transaccionales y funciones para registrar errores desde la API. Para
+conocer el diseño completo, consulta [SEGMENTACION_BD.md](SEGMENTACION_BD.md).
 
 ### Bucket de Storage:
 - Nombre: `qr-logos` (Público).
