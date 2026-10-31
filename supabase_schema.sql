@@ -35,8 +35,6 @@ CREATE TABLE IF NOT EXISTS seguridad.usuarios (
 -- Estos HMAC permiten conservar la unicidad sin guardar el valor en claro.
 ALTER TABLE seguridad.usuarios ADD COLUMN IF NOT EXISTS usuario_hmac TEXT;
 ALTER TABLE seguridad.usuarios ADD COLUMN IF NOT EXISTS correo_hmac TEXT;
-ALTER TABLE seguridad.usuarios DROP CONSTRAINT IF EXISTS usuarios_usuario_key;
-ALTER TABLE seguridad.usuarios DROP CONSTRAINT IF EXISTS usuarios_correo_key;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_usuario_hmac
     ON seguridad.usuarios (usuario_hmac) WHERE usuario_hmac IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_correo_hmac

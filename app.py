@@ -108,7 +108,7 @@ class TarjetaSaveRequest(BaseModel):
 class EncryptionDemoRequest(BaseModel):
     username: str = Field(min_length=3, max_length=80)
     email: str = Field(min_length=5, max_length=254)
-    card_id: str = Field(min_length=15, max_length=80)
+    card_id: str = Field(min_length=1, max_length=67)
     card_title: str = Field(min_length=1, max_length=160)
     destination_url: str = Field(min_length=1, max_length=2048)
 
@@ -228,10 +228,7 @@ def save_encryption_demo(payload: EncryptionDemoRequest):
     if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
         raise HTTPException(status_code=422, detail="Ingresa un correo de demostración válido.")
     if not card_id.startswith("demo-cifrado-"):
-        raise HTTPException(
-            status_code=422,
-            detail="El identificador de evidencia debe empezar con demo-cifrado-.",
-        )
+        card_id = f"demo-cifrado-{card_id}"
 
     try:
         db.save_demo_user(username, email)
