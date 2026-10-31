@@ -296,11 +296,12 @@ ALTER TABLE analitica.escaneos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE auditoria."try" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE auditoria."catch" ENABLE ROW LEVEL SECURITY;
 
--- Estas políticas mantienen el comportamiento actual de la aplicación.
--- En producción conviene reemplazarlas por políticas basadas en auth.uid().
+-- La aplicación solo inserta usuarios cifrados desde el formulario de evidencia.
+-- No se permite leerlos, modificarlos ni borrarlos desde la Data API.
 DROP POLICY IF EXISTS "api_usuarios" ON seguridad.usuarios;
-CREATE POLICY "api_usuarios" ON seguridad.usuarios FOR ALL TO anon, authenticated
-USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "api_usuarios_insert" ON seguridad.usuarios;
+CREATE POLICY "api_usuarios_insert" ON seguridad.usuarios FOR INSERT TO anon, authenticated
+WITH CHECK (true);
 
 DROP POLICY IF EXISTS "api_tarjetas" ON catalogo.tarjetas;
 CREATE POLICY "api_tarjetas" ON catalogo.tarjetas FOR ALL TO anon, authenticated
@@ -327,7 +328,8 @@ CREATE POLICY "api_auditoria_catch_insert" ON auditoria."catch" FOR INSERT TO an
 WITH CHECK (true);
 
 GRANT USAGE ON SCHEMA seguridad, catalogo, analitica, auditoria TO anon, authenticated;
-GRANT SELECT, INSERT, UPDATE, DELETE ON seguridad.usuarios, catalogo.tarjetas,
+GRANT INSERT ON seguridad.usuarios TO anon, authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON catalogo.tarjetas,
     analitica.escaneos TO anon, authenticated;
 GRANT SELECT, INSERT ON auditoria."try", auditoria."catch" TO anon, authenticated;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA analitica, auditoria TO anon, authenticated;

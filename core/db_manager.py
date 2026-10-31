@@ -263,7 +263,9 @@ class DatabaseManager:
             "rol": "operador",
         }
         try:
-            self.client.schema(self.security_schema).table("usuarios").insert(record).execute()
+            self.client.schema(self.security_schema).table("usuarios").insert(
+                record, returning="minimal"
+            ).execute()
         except Exception as e:
             self._audit_failure("guardar usuario de demostración", e, "seguridad", "usuarios")
             if "23505" in str(e) or "duplicate key" in str(e).lower():

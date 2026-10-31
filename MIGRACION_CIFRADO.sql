@@ -9,4 +9,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_usuario_hmac
 CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_correo_hmac
     ON seguridad.usuarios (correo_hmac) WHERE correo_hmac IS NOT NULL;
 
+-- El formulario solo inserta usuarios cifrados; no devuelve ni consulta filas.
+ALTER TABLE seguridad.usuarios ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS api_usuarios ON seguridad.usuarios;
+DROP POLICY IF EXISTS api_usuarios_insert ON seguridad.usuarios;
+CREATE POLICY api_usuarios_insert ON seguridad.usuarios
+    FOR INSERT TO anon, authenticated WITH CHECK (true);
+REVOKE SELECT, UPDATE, DELETE ON TABLE seguridad.usuarios FROM anon, authenticated;
+GRANT INSERT ON TABLE seguridad.usuarios TO anon, authenticated;
+
+GRANT USAGE ON SCHEMA seguridad, catalogo TO anon, authenticated;
+
 NOTIFY pgrst, 'reload schema';
