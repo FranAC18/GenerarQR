@@ -19,7 +19,6 @@
 6. Prepara valores ficticios y únicos para que no choque con una grabación previa:
    - Usuario: `demo_estudiante_01`
    - Correo: `estudiante.demo@example.com`
-   - ID: `demo-cifrado-2026-10-30-01`
    - Título: `Tarjeta privada de demostración`
    - URL: `https://example.com/demo-cifrado`
 7. Abre `ENCRIPTACION_DEMO.sql` en una pestaña lista para ejecutarse después de enviar el formulario.
@@ -37,7 +36,7 @@
 
 ### 0:20–1:05 | Ingresar los datos por el formulario
 
-**Mostrar:** pestaña **Cifrado**. Completa los cinco campos con los datos de prueba preparados y pulsa **Guardar datos cifrados**.
+**Mostrar:** pestaña **Cifrado**. Completa los cuatro campos con los datos de prueba preparados y pulsa **Guardar datos cifrados**. Señala el ID que la app genera en el mensaje de confirmación.
 
 **Decir:**
 

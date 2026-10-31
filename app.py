@@ -2,6 +2,7 @@ import os
 import io
 import zipfile
 import urllib.parse
+import uuid
 from typing import Optional, Dict, Any
 from fastapi import FastAPI, HTTPException, UploadFile, File, Request
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse, FileResponse, RedirectResponse
@@ -108,7 +109,6 @@ class TarjetaSaveRequest(BaseModel):
 class EncryptionDemoRequest(BaseModel):
     username: str = Field(min_length=3, max_length=80)
     email: str = Field(min_length=5, max_length=254)
-    card_id: str = Field(min_length=1, max_length=67)
     card_title: str = Field(min_length=1, max_length=160)
     destination_url: str = Field(min_length=1, max_length=2048)
 
@@ -221,15 +221,12 @@ def save_encryption_demo(payload: EncryptionDemoRequest):
 
     username = payload.username.strip()
     email = payload.email.strip().lower()
-    card_id = payload.card_id.strip()
+    card_id = f"demo-cifrado-{uuid.uuid4().hex}"
     card_title = payload.card_title.strip()
     destination_url = payload.destination_url.strip()
 
     if "@" not in email or "." not in email.rsplit("@", 1)[-1]:
         raise HTTPException(status_code=422, detail="Ingresa un correo de demostración válido.")
-    if not card_id.startswith("demo-cifrado-"):
-        card_id = f"demo-cifrado-{card_id}"
-
     try:
         db.save_demo_user(username, email)
         card_result = db.save_card(card_id, {
