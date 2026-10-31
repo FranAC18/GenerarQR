@@ -204,8 +204,8 @@ class DatabaseManager:
             try:
                 record = {
                     "id": card_id,
-                    "title": encrypt_text(data.get("title", card_id), "catalogo.tarjetas.title"),
-                    "url": encrypt_text(data.get("url", ""), "catalogo.tarjetas.url"),
+                    "title": data.get("title", card_id),
+                    "url": data.get("url", ""),
                     "content_type": data.get("content_type", "url"),
                     "logo_url": data.get("logo", ""),
                     "style_config": style_config,
@@ -217,8 +217,8 @@ class DatabaseManager:
                 res = self._catalog_table().upsert(record).execute()
                 public_record = {
                     **record,
-                    "title": decrypt_text(record["title"], "catalogo.tarjetas.title"),
-                    "url": decrypt_text(record["url"], "catalogo.tarjetas.url"),
+                    "title": record["title"],
+                    "url": record["url"],
                 }
                 return {"status": "success", "storage": "supabase", "card": public_record}
             except Exception as e:
@@ -233,9 +233,9 @@ class DatabaseManager:
             config["tarjetas"] = {}
         
         config["tarjetas"][card_id] = {
-            "url": encrypt_text(data.get("url", ""), "catalogo.tarjetas.url"),
+            "url": data.get("url", ""),
             "logo": data.get("logo", ""),
-            "title": encrypt_text(data.get("title", card_id), "catalogo.tarjetas.title"),
+            "title": data.get("title", card_id),
             "fill_color": style_config["fill_color"],
             "back_color": style_config["back_color"],
             "is_dynamic": data.get("is_dynamic", False),
@@ -245,21 +245,19 @@ class DatabaseManager:
         self._save_local_config(config)
         public_card = {
             **config["tarjetas"][card_id],
-            "url": decrypt_text(config["tarjetas"][card_id]["url"], "catalogo.tarjetas.url"),
-            "title": decrypt_text(config["tarjetas"][card_id]["title"], "catalogo.tarjetas.title"),
+            "url": config["tarjetas"][card_id]["url"],
+            "title": config["tarjetas"][card_id]["title"],
         }
         return {"status": "success", "storage": "local", "card": public_card}
 
     def save_demo_user(self, username: str, email: str) -> None:
-        """Store the demo user's sensitive fields encrypted in seguridad.usuarios."""
+        """Store the username as a one-way HMAC and encrypt the email in seguridad.usuarios."""
         if not self.is_supabase:
             raise RuntimeError("El formulario de evidencia requiere una conexión a Supabase.")
 
         record = {
-            "usuario": encrypt_text(username, "seguridad.usuarios.usuario"),
             "correo": encrypt_text(email, "seguridad.usuarios.correo"),
             "usuario_hmac": blind_index(username, "usuario"),
-            "correo_hmac": blind_index(email, "correo"),
             "rol": "operador",
         }
         try:
@@ -270,7 +268,7 @@ class DatabaseManager:
             self._audit_failure("guardar usuario de demostración", e, "seguridad", "usuarios")
             if "23505" in str(e) or "duplicate key" in str(e).lower():
                 raise RuntimeError(
-                    "El usuario o correo de prueba ya están registrados; usa valores ficticios distintos."
+                    "El usuario de prueba ya está registrado; usa un nombre ficticio distinto."
                 ) from e
             raise RuntimeError(
                 "No se pudo guardar el usuario. Compruebe la migración y los permisos de Supabase."

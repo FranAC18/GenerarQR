@@ -2,14 +2,14 @@
 -- Las instalaciones nuevas ya reciben este cambio desde supabase_schema.sql.
 
 ALTER TABLE seguridad.usuarios ADD COLUMN IF NOT EXISTS usuario_hmac TEXT;
-ALTER TABLE seguridad.usuarios ADD COLUMN IF NOT EXISTS correo_hmac TEXT;
 
 CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_usuario_hmac
     ON seguridad.usuarios (usuario_hmac) WHERE usuario_hmac IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_correo_hmac
-    ON seguridad.usuarios (correo_hmac) WHERE correo_hmac IS NOT NULL;
 
--- El formulario solo inserta usuarios cifrados; no devuelve ni consulta filas.
+-- El usuario queda solo como HMAC; el correo permanece cifrado con AES-256-GCM.
+ALTER TABLE seguridad.usuarios ALTER COLUMN usuario DROP NOT NULL;
+
+-- El formulario solo inserta el HMAC del usuario y el correo cifrado; no lee filas.
 ALTER TABLE seguridad.usuarios ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS api_usuarios ON seguridad.usuarios;
 DROP POLICY IF EXISTS api_usuarios_insert ON seguridad.usuarios;

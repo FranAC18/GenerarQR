@@ -1643,7 +1643,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fields = Object.fromEntries(new FormData(dom.encryptionDemoForm).entries());
     dom.encryptionDemoSaveBtn.disabled = true;
     dom.encryptionDemoResult.className = 'encryption-demo-result';
-    dom.encryptionDemoResult.textContent = 'Cifrando y guardando los dos registros…';
+    dom.encryptionDemoResult.textContent = 'Aplicando HMAC al usuario y cifrando el correo…';
 
     try {
       const response = await fetch('/api/cifrado/demo', {
@@ -1656,7 +1656,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       dom.encryptionDemoResult.classList.add('is-success');
       dom.encryptionDemoResult.textContent = `${result.message} ID de tarjeta: ${result.card_id}. Ejecuta ahora las consultas SQL de ENCRIPTACION_DEMO.sql.`;
-      showToast('Datos de prueba guardados cifrados en Supabase.', 'success');
+      showToast('Demostración guardada en Supabase.', 'success');
     } catch (error) {
       dom.encryptionDemoResult.classList.add('is-error');
       dom.encryptionDemoResult.textContent = error.message;

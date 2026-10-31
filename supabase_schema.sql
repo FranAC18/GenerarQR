@@ -19,11 +19,10 @@ CREATE SCHEMA IF NOT EXISTS auditoria;
 -- 2. MÓDULO SEGURIDAD: usuarios y roles
 CREATE TABLE IF NOT EXISTS seguridad.usuarios (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    usuario TEXT NOT NULL,
+    usuario TEXT,
     nombre_completo TEXT,
     correo TEXT,
     usuario_hmac TEXT,
-    correo_hmac TEXT,
     rol TEXT NOT NULL DEFAULT 'operador'
         CHECK (rol IN ('administrador', 'operador', 'auditor')),
     activo BOOLEAN NOT NULL DEFAULT TRUE,
@@ -31,14 +30,13 @@ CREATE TABLE IF NOT EXISTS seguridad.usuarios (
     actualizado_en TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- Los campos usuario/correo se cifran en la aplicación con AES-256-GCM.
--- Estos HMAC permiten conservar la unicidad sin guardar el valor en claro.
+-- El nombre de usuario se conserva solo como HMAC; el correo usa AES-256-GCM.
+-- El usuario HMAC permite mantener unicidad sin guardar el valor original.
 ALTER TABLE seguridad.usuarios ADD COLUMN IF NOT EXISTS usuario_hmac TEXT;
-ALTER TABLE seguridad.usuarios ADD COLUMN IF NOT EXISTS correo_hmac TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_usuario_hmac
     ON seguridad.usuarios (usuario_hmac) WHERE usuario_hmac IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS ux_usuarios_correo_hmac
-    ON seguridad.usuarios (correo_hmac) WHERE correo_hmac IS NOT NULL;
+
+ALTER TABLE seguridad.usuarios ALTER COLUMN usuario DROP NOT NULL;
 
 -- 3. MÓDULO CATÁLOGO: tarjetas digitales y su configuración
 CREATE TABLE IF NOT EXISTS catalogo.tarjetas (

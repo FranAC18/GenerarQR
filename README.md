@@ -92,13 +92,13 @@ scriptQr/
 
 ### Cifrado de campos para la demostración
 
-La aplicación cifra `usuario` y `correo` en `seguridad.usuarios`, además de `title` y `url` en `catalogo.tarjetas`, con **AES-256-GCM** antes de enviar los registros a PostgreSQL. Al leer una tarjeta, la aplicación los descifra en el servidor. La clave nunca se guarda en la base ni se envía al navegador.
+La aplicación almacena `usuario` como un HMAC-SHA-256 irreversible en `seguridad.usuarios` y cifra únicamente `correo` con **AES-256-GCM** antes de enviarlo a PostgreSQL. `title` y `url` en `catalogo.tarjetas` quedan legibles. La clave de cifrado nunca se guarda en la base ni se envía al navegador.
 
 1. La instancia publicada `qr-kobaia.vercel.app` ya está conectada a Supabase. Conserva sus variables actuales `SUPABASE_URL` y `SUPABASE_KEY`.
 2. Genera una clave con `python -c "import base64,secrets; print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"` y agrégala como `FIELD_ENCRYPTION_KEY` en Vercel. Mantén la clave privada y guarda una copia segura: perderla impide descifrar los registros.
 3. Para una base existente, ejecuta una vez [MIGRACION_CIFRADO.sql](MIGRACION_CIFRADO.sql) en Supabase SQL Editor. Una instalación nueva puede usar el [esquema actualizado](supabase_schema.sql).
 4. Publica esta versión del repositorio y confirma en `/api/status` que aparezcan `mode: supabase`, `connected: true` y `encryption_ready: true`.
-5. Entra en **Cifrado**, envía datos ficticios y ejecuta las consultas de [ENCRIPTACION_DEMO.sql](ENCRIPTACION_DEMO.sql) para ver los ciphertexts.
+5. Entra en **Cifrado**, envía datos ficticios y ejecuta las consultas de [ENCRIPTACION_DEMO.sql](ENCRIPTACION_DEMO.sql) para ver el HMAC del usuario y el ciphertext del correo.
 6. Para ejecutar la app localmente, instala las dependencias con `pip install -r requirements.txt` y configura `.env` con las variables de Supabase y la misma clave de cifrado.
 7. Sigue [el guion de grabación](GUION_VIDEO_CIFRADO_3_MIN.md) para preparar la evidencia de menos de cinco minutos.
 

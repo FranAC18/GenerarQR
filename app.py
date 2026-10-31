@@ -201,13 +201,13 @@ def get_system_status():
     """Retorna el estado de la conexión a Supabase o Modo Local."""
     status = db.get_status()
     status["encryption_ready"] = encryption_ready()
-    status["encryption_algorithm"] = "AES-256-GCM"
+    status["encryption_algorithm"] = "AES-256-GCM + HMAC-SHA-256"
     return status
 
 
 @app.post("/api/cifrado/demo")
 def save_encryption_demo(payload: EncryptionDemoRequest):
-    """Guarda datos de demostración cifrados en seguridad y catálogo."""
+    """Guarda el usuario con HMAC, el correo cifrado y la tarjeta legible."""
     if not encryption_ready():
         raise HTTPException(
             status_code=503,
@@ -239,12 +239,12 @@ def save_encryption_demo(payload: EncryptionDemoRequest):
             raise RuntimeError("La tarjeta no quedó guardada en Supabase.")
     except RuntimeError as exc:
         message = str(exc)
-        status_code = 409 if "ya están registrados" in message else 500
+        status_code = 409 if "ya está registrado" in message else 500
         raise HTTPException(status_code=status_code, detail=message) from exc
 
     return {
         "status": "success",
-        "message": "Los dos registros se guardaron cifrados en Supabase.",
+        "message": "Usuario protegido con HMAC, correo cifrado y tarjeta guardada legible en Supabase.",
         "card_id": card_id,
     }
 

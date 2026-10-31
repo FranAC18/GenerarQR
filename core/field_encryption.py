@@ -76,7 +76,7 @@ def decrypt_text(value: Optional[str], field_name: str) -> Optional[str]:
 
 
 def blind_index(value: str, purpose: str) -> str:
-    """Create a keyed, non-reversible digest for uniqueness checks on encrypted fields."""
+    """Create a keyed, non-reversible HMAC digest for a username."""
     key = hmac.new(_master_key(), b"kobaia:blind-index:v1", hashlib.sha256).digest()
     normalized = value.strip().casefold().encode("utf-8")
     return hmac.new(key, purpose.encode("utf-8") + b":" + normalized, hashlib.sha256).hexdigest()
